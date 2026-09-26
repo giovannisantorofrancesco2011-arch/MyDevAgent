@@ -119,7 +119,7 @@
   .lead { max-width: 680px; margin: 16px auto 0; font-size: clamp(16px, 2.2vw, 19px); color: var(--muted); }
 
   /* bottoni di download */
-  .downloads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 900px; margin: 40px auto 0; }
+  .downloads { scroll-margin-top: 90px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 900px; margin: 40px auto 0; }
   .dl {
     position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left;
     padding: 20px 22px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--card);
@@ -458,9 +458,18 @@
   @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
   .brain { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--dim); margin-top: 14px; height: 1.6em; overflow: hidden; }
 
-  footer { border-top: 1px solid var(--line); padding: 40px 0; color: var(--muted); font-size: 14px; }
-  footer .wrap { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
-  footer a { color: var(--lilac); }
+  footer { border-top: 1px solid var(--line); padding: 70px 0 34px; color: var(--muted); font-size: 14px; background: rgba(7,4,13,.7); }
+  .foot { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 30px; }
+  .foot .motto { font-size: clamp(28px, 3.4vw, 40px); font-weight: 800; letter-spacing: -.035em; line-height: 1.1; color: var(--text); }
+  .foot .motto span { display: block; color: var(--dim); }
+  .foot .vio { width: 54px; margin-top: 22px; }
+  .foot h4 { font-size: 13px; font-weight: 500; color: var(--dim); margin-bottom: 14px; }
+  .foot ul { list-style: none; display: grid; gap: 10px; }
+  .foot ul a { color: var(--text); transition: color .2s; }
+  .foot ul a:hover { color: var(--lilac); }
+  .foot ul .soon { color: var(--dim); }
+  .foot-bottom { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 13px; color: var(--dim); }
+  .foot-bottom a { color: var(--lilac); }
 
   /* Vio che ti accompagna */
   .guide { position: fixed; right: 18px; bottom: 18px; z-index: 15; display: flex; align-items: flex-end; gap: 10px; opacity: 0; transform: translateY(30px); transition: .4s; pointer-events: none; }
@@ -484,6 +493,8 @@
   @media (max-width: 960px) {
     nav ul { display: none; }
     .downloads, .grid, .steps { grid-template-columns: 1fr; }
+    .foot { grid-template-columns: 1fr 1fr; }
+    .foot > div:first-child { grid-column: 1 / -1; }
     .stats, .hw { grid-template-columns: repeat(2, 1fr); }
     .studio, .faces, .team, .priv { grid-template-columns: 1fr; }
     section { padding: 70px 0; }
@@ -554,7 +565,7 @@
     <p class="rot mono reveal" aria-hidden="true"><span class="p">›</span> <span id="rot"></span><span class="caret"></span></p>
     <p class="lead reveal">MyDevAgent legge il tuo progetto, scrive il codice, lancia i test e si corregge da solo. Tutto in locale con Ollama: i tuoi file non lasciano mai il computer.</p>
 
-    <div class="downloads reveal">
+    <div class="downloads reveal" id="scarica">
       <a class="dl main" href="https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent/archive/refs/heads/claude/gracious-mayer-mt8l9b.zip">
         <span class="ic">📦</span><strong>Scarica MyDevAgent</strong><small>Cartella .zip · Windows, Linux, macOS</small>
       </a>
@@ -812,8 +823,43 @@
 
 <footer>
   <div class="wrap">
-    <span class="logo"><svg class="vio" data-expr="love"></svg><span>My<b>Dev</b>Agent</span></span>
-    <span>Fatto con 💜 e otto tentacoli · <a href="https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent" target="_blank" rel="noopener">codice su GitHub</a> · scrivi <kbd>v</kbd><kbd>i</kbd><kbd>o</kbd> per una sorpresa</span>
+    <div class="foot">
+      <div>
+        <p class="motto">I tuoi modelli.<span>Il tuo PC.</span></p>
+        <svg class="vio" data-expr="love" aria-hidden="true"></svg>
+      </div>
+      <div>
+        <h4>Prodotto</h4>
+        <ul>
+          <li><a href="#scarica">Scarica</a></li>
+          <li><a href="#funzioni">Funzioni</a></li>
+          <li><a href="#studio">Studio per Windows</a></li>
+          <li><a href="#installa">Installa</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Legale</h4>
+        <ul>
+          <li><a href="privacy.html">Privacy</a></li>
+          <li><a href="termini.html">Termini</a></li>
+          <li><a href="termini.html#licenza">Licenza MIT</a></li>
+          <li><a href="https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent/issues" target="_blank" rel="noopener">Contatti</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Release</h4>
+        <ul>
+          <li><a href="https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent/releases" target="_blank" rel="noopener">Tutte le release</a></li>
+          <li><a href="https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent" target="_blank" rel="noopener">Codice su GitHub</a></li>
+          <li class="soon">MyCode · in arrivo</li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 MyDevAgent · open source con licenza MIT</span>
+      <span>Fatto con 💜 e otto tentacoli · scrivi <kbd>v</kbd><kbd>i</kbd><kbd>o</kbd> per una sorpresa</span>
+    </div>
   </div>
 </footer>
 

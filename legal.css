@@ -1,0 +1,25 @@
+:root { --bg: #07040d; --line: rgba(168, 85, 247, .22); --purple: #a855f7; --lilac: #d8b4fe; --text: #ede9f6; --muted: #a39cb5; --dim: #7b7390; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: radial-gradient(ellipse at 50% -10%, rgba(126,34,206,.35), transparent 55%), var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; line-height: 1.7; }
+a { color: var(--lilac); }
+:focus-visible { outline: 2px solid var(--lilac); outline-offset: 3px; border-radius: 4px; }
+nav { border-bottom: 1px solid var(--line); }
+nav div, main { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+nav div { display: flex; justify-content: space-between; align-items: center; height: 64px; }
+nav .logo { font-weight: 800; color: var(--text); text-decoration: none; letter-spacing: -.02em; }
+nav .logo b { color: var(--purple); }
+nav div > a:last-child { font-size: 14px; color: var(--muted); text-decoration: none; }
+main { padding-top: 56px; padding-bottom: 80px; }
+.kicker { color: var(--purple); font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+h1 { font-size: clamp(34px, 6vw, 48px); letter-spacing: -.03em; line-height: 1.1; margin: 8px 0 10px; }
+.date { color: var(--dim); font-size: 14px; }
+.intro { margin-top: 22px; font-size: 18px; color: var(--muted); }
+h2 { font-size: 21px; letter-spacing: -.02em; margin: 44px 0 10px; scroll-margin-top: 20px; }
+p, li { color: var(--muted); }
+p + p, ul + p { margin-top: 12px; }
+ul { margin: 10px 0 0 20px; display: grid; gap: 6px; }
+li::marker { color: var(--purple); }
+b { color: var(--text); font-weight: 600; }
+code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; background: #1a1029; border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; color: var(--lilac); }
+.box { margin-top: 28px; padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line); background: rgba(24, 14, 40, .65); }
+footer { border-top: 1px solid var(--line); padding: 26px 20px; text-align: center; font-size: 13px; color: var(--dim); }

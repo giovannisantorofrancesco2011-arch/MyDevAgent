@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy · MyDevAgent</title>
+<meta name="description" content="Informativa sulla privacy di MyDevAgent e del suo sito: niente account, niente telemetria, tutto sul tuo PC.">
+<meta name="theme-color" content="#07040d">
+<link rel="stylesheet" href="legal.css">
+</head>
+<body>
+<nav><div><a class="logo" href="./">My<b>Dev</b>Agent</a><a href="./">← Torna al sito</a></div></nav>
+<main>
+  <p class="kicker">Legale</p>
+  <h1>Privacy</h1>
+  <p class="date">Ultimo aggiornamento: 26 settembre 2026</p>
+  <p class="intro">In breve: MyDevAgent gira sul tuo PC. Non ha account e non manda telemetria. Noi non abbiamo server e non riceviamo i tuoi file, il tuo codice o le tue chat.</p>
+
+  <h2>Il programma MyDevAgent</h2>
+  <p>I modelli AI girano in locale con Ollama. Il tuo codice, le conversazioni, la memoria (<code>#nota</code>) e le statistiche (<code>/stats</code>) restano in file sul tuo computer. Puoi cancellarli quando vuoi.</p>
+  <p>MyDevAgent si collega a internet <b>solo</b> in questi casi:</p>
+  <ul>
+    <li><b>Controllo della connessione:</b> una richiesta vuota a <code>gstatic.com/generate_204</code> (Google) per capire se sei online.</li>
+    <li><b>Aggiornamenti:</b> <code>/update</code> e l'avviso all'avvio chiedono a GitHub se ci sono novità.</li>
+    <li><b>Ricerca web e lettura di pagine</b>, quando le usi: la ricerca passa da DuckDuckGo, oppure da SearXNG, Tavily o Firecrawl se li hai configurati tu. Le pagine vengono scaricate dai siti che visiti.</li>
+    <li><b>Modelli, plugin e server MCP</b> che scegli di scaricare o collegare: Ollama, GitHub o gli indirizzi che indichi tu.</li>
+  </ul>
+  <p>Questi servizi hanno le loro informative sulla privacy e vedono il tuo indirizzo IP. Se non usi la ricerca web e non aggiorni, MyDevAgent funziona completamente offline.</p>
+
+  <h2>Multigiocatore</h2>
+  <p>Con <code>/multi</code> la tua sessione è visibile nella tua rete locale a chi ha il codice della stanza. Chi entra vede la conversazione e le modifiche ai file. Condividi il codice solo con persone di cui ti fidi.</p>
+
+  <h2>MyDevAgent Studio</h2>
+  <p>Lo Studio è basato su VSCodium, che non ha la telemetria di Microsoft. Il setup scarica Python, Ollama e MyDevAgent dai loro siti ufficiali.</p>
+
+  <h2>Questo sito</h2>
+  <ul>
+    <li>Non usa cookie, statistiche di visita o pubblicità.</li>
+    <li>È ospitato su <b>GitHub Pages</b>. GitHub può registrare il tuo indirizzo IP per sicurezza: vedi la <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">privacy di GitHub</a>.</li>
+    <li>I caratteri arrivano da <b>Google Fonts</b>, che vede il tuo indirizzo IP.</li>
+    <li>I pulsanti per scaricare portano a GitHub.</li>
+  </ul>
+
+  <h2>Contatti</h2>
+  <p>Per domande sulla privacy apri una segnalazione su <a href="https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent/issues" target="_blank" rel="noopener">GitHub</a>.</p>
+
+  <p class="box">Leggi anche i <a href="termini.html">Termini</a>.</p>
+</main>
+<footer>© 2026 MyDevAgent · Fatto con 💜 e otto tentacoli</footer>
+</body>
+</html>
