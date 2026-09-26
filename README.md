@@ -253,5 +253,5 @@ ruff check .
 MYDEVAGENT_FAKE_LLM=1 mydevagent                 # prova l'interfaccia senza modello
 ```
 
-Licenza MIT. I modelli hanno le loro licenze (Qwen: Apache-2.0 per la maggior parte delle taglie —
+Licenza MIT (vedi [LICENSE](LICENSE)). I modelli hanno le loro licenze (Qwen: Apache-2.0 per la maggior parte delle taglie —
 verifica sempre la model card).
