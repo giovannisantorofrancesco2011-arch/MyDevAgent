@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagina non trovata · MyDevAgent</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#07040d">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 8' shape-rendering='crispEdges'%3E%3Crect x='4' width='6' height='1' fill='%23581c87'/%3E%3Crect x='2' y='1' width='10' height='6' fill='%23a855f7'/%3E%3Crect x='4' y='3' width='2' height='2' fill='%231a0b2e'/%3E%3Crect x='8' y='3' width='2' height='2' fill='%231a0b2e'/%3E%3Crect x='1' y='7' width='12' height='1' fill='%23581c87'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/legal.css">
+<style>
+  main { min-height: calc(100vh - 140px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding-top: 30px; }
+  #vio { width: 200px; cursor: pointer; filter: drop-shadow(0 0 36px rgba(168,85,247,.55)); animation: bob 3.2s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-12px); } }
+  .big { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: clamp(64px, 16vw, 120px); font-weight: 800; line-height: 1; margin-top: 30px;
+    background: linear-gradient(100deg, #f5d0fe, #a855f7 45%, #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h1 { text-wrap: balance; }
+  .intro { max-width: 460px; margin-top: 14px; }
+  .btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 30px; }
+  .btn { padding: 12px 20px; border-radius: 12px; font-weight: 600; text-decoration: none; color: #fff; background: linear-gradient(135deg, #7e22ce, #a855f7); box-shadow: 0 10px 30px -10px rgba(168,85,247,.8); }
+  .btn.ghost { background: none; border: 1px solid var(--line); box-shadow: none; color: var(--text); }
+  @media (prefers-reduced-motion: reduce) { #vio { animation: none; } }
+</style>
+</head>
+<body>
+<nav><div><a class="logo" href="/">My<b>Dev</b>Agent</a><a href="/">← Torna al sito</a></div></nav>
+<main>
+  <svg id="vio" viewBox="0 0 14 8" shape-rendering="crispEdges" role="img" aria-label="Vio con gli occhi a X"></svg>
+  <p class="big">404</p>
+  <h1>Ops! Questa pagina non c'è.</h1>
+  <p class="intro" id="say">Vio l'ha cercata con tutti e otto i tentacoli, ma qui non c'è niente. Forse il link è sbagliato o la pagina è stata spostata.</p>
+  <div class="btns"><a class="btn" href="/">Torna al sito</a><a class="btn ghost" href="/#scarica">Scarica MyDevAgent</a></div>
+</main>
+<footer>© 2026 MyDevAgent · Fatto con 💜 e otto tentacoli</footer>
+<script>
+// Vio con la faccia "error" di mydevagent/tui/mascot.py; cliccalo e ti consola
+const C = { P: "#a855f7", D: "#581c87", L: "#d8b4fe", K: "#1a0b2e", W: "#ffffff", C: "#f472b6", R: "#f43f5e" };
+const HEAD = [".....DDDD.....", "...DDPPPPDD...", "..DPLPPPPPPD.."];
+const FACES = { error: [".DPRPRPPRPRPD.", ".DPPRPPPPRPPD.", ".DPCPPDDPPCPD."], look: [".DPPPWKPPWKPD.", ".DPPPKKPPKKPD.", ".DPCPPDDPPCPD."], love: [".DPCPCPPCPCPD.", ".DPPCPPPPCPPD.", ".DPCPPKKPPCPD."] };
+const LEGS = [["DPDPDPPPPDPDPD", "D.P.P.DD.P.P.D"], ["DPDPDPPPPDPDPD", ".D.P.PDDP.P.D."]];
+const svg = document.getElementById("vio");
+let face = "error", pose = 0;
+function draw() {
+  let out = "";
+  [...HEAD, ...FACES[face], ...LEGS[pose]].forEach((r, y) => [...r].forEach((c, x) => { if (c !== ".") out += '<rect x="' + x + '" y="' + y + '" width="1.02" height="1.02" fill="' + C[c] + '"/>'; }));
+  svg.innerHTML = out;
+}
+draw();
+setInterval(() => { pose ^= 1; draw(); }, 600);
+setInterval(() => { if (face === "error") { face = "look"; draw(); setTimeout(() => { if (face === "look") { face = "error"; draw(); } }, 1200); } }, 3500);
+svg.addEventListener("click", () => { face = "love"; draw(); document.getElementById("say").textContent = "Grazie! Ora ti riporto a casa 💜"; setTimeout(() => { location.href = "/"; }, 1400); });
+</script>
+</body>
+</html>
