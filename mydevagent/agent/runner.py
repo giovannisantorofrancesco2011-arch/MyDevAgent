@@ -68,7 +68,8 @@ LEARN_PROMPT = """# Learning mode: the user is learning to program
   rewriting it for them unless they ask."""
 NO_CHANGES = ("The request asks to change the project, but you have not modified any file. Apply the changes now "
               "with edit_file / write_file, run the tests, then give your final answer. If you believe no change is "
-              "needed, explain why in one line.")
+              "needed, explain why in one line. Code shown in your replies or in the task context is NOT applied: files "
+              "change only through tool calls.")
 
 
 class AgentRunner:
@@ -195,6 +196,7 @@ class AgentRunner:
             loop = AgentLoop(orch.llm, tools, system=system, tier=lead.tier if lead.tier != "reasoning" else "main",
                              max_steps=MAX_STEPS.get(route.mode, 25), native=native, emit=emit, cancel=cancel,
                              context_chars=settings.active_profile.num_ctx * 3)
+            loop.apply_code = wants_changes(route.request)
             emit({"type": "agent_start", "agent": lead.key, "name": lead.name})
             started = time.perf_counter()
             result = loop.run(self._task(route.request, state, plan, self._rag(route.request)))
@@ -261,6 +263,7 @@ class AgentRunner:
                 self.loop = AgentLoop(orch.llm, tools, system=system, tier="main", max_steps=MAX_STEPS["ultra-deep"],
                                       native=settings.active_profile.native_tools, emit=emit, cancel=cancel,
                                       context_chars=settings.active_profile.num_ctx * 3)
+                self.loop.apply_code = self.expects_changes()
                 emit({"type": "agent_start", "agent": lead.key, "name": lead.name})
                 started = time.perf_counter()
                 rag = runner._rag(route.request)
