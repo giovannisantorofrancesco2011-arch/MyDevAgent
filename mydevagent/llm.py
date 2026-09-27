@@ -87,7 +87,24 @@ class OpenAICompatLLM:
     def model_name(self, tier: str) -> str:
         return self.settings.resolve_model(tier)[0]
 
+    def _ollama(self, tier: str) -> tuple[str, str] | None:
+        """(modello, host) se il tier gira su Ollama: lì si usa l'API nativa, l'unica che accetta num_ctx."""
+        from .health import is_ollama, ollama_host
+
+        model, backend = self.settings.resolve_model(tier)
+        return (model, ollama_host(backend.base_url)) if is_ollama(backend.base_url) else None
+
+    def _ollama_body(self, model: str, messages, max_tokens: int, temperature: float, stream: bool) -> dict[str, Any]:
+        # senza num_ctx Ollama usa il suo contesto di default (2-4k token) e, se il prompt non ci sta, butta via
+        # in silenzio i messaggi più vecchi: la richiesta dell'utente spariva e l'agente rispondeva «nessuna modifica»
+        return {"model": model, "messages": [_to_ollama(m) for m in messages], "stream": stream,
+                "options": {"num_ctx": self.settings.active_profile.num_ctx, "num_predict": max_tokens,
+                            "temperature": temperature}}
+
     def complete(self, messages, *, tier="main", max_tokens=1024, temperature=0.2, tools=None) -> Completion:
+        ollama = self._ollama(tier)
+        if ollama:
+            return self._ollama_complete(*ollama, messages, max_tokens, temperature, tools)
         client, model = self._client_for(tier)
         start = time.perf_counter()
         kwargs: dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens,
@@ -108,7 +125,44 @@ class OpenAICompatLLM:
             calls=calls,
         )
 
+    def _ollama_complete(self, model, host, messages, max_tokens, temperature, tools) -> Completion:
+        import httpx
+
+        start = time.perf_counter()
+        body = self._ollama_body(model, messages, max_tokens, temperature, stream=False)
+        if tools:
+            body["tools"] = tools
+        resp = httpx.post(f"{host}/api/chat", json=body, timeout=self.timeout)
+        _ollama_check(resp)
+        data = resp.json()
+        msg = data.get("message") or {}
+        calls = []
+        for i, call in enumerate(msg.get("tool_calls") or []):
+            fn = call.get("function") or {}
+            args = fn.get("arguments") or {}
+            calls.append({"id": call.get("id") or f"call_{i}", "name": fn.get("name", ""),
+                          "arguments": args if isinstance(args, str) else json.dumps(args)})
+        return Completion(text=msg.get("content") or "", model=model, prompt_tokens=data.get("prompt_eval_count") or 0,
+                          completion_tokens=data.get("eval_count") or 0,
+                          ms=int((time.perf_counter() - start) * 1000), calls=calls)
+
     def stream(self, messages, *, tier="main", max_tokens=1024, temperature=0.2) -> Iterator[str]:
+        ollama = self._ollama(tier)
+        if ollama:
+            import httpx
+
+            model, host = ollama
+            body = self._ollama_body(model, messages, max_tokens, temperature, stream=True)
+            with httpx.stream("POST", f"{host}/api/chat", json=body, timeout=self.timeout) as resp:
+                if resp.status_code >= 400:
+                    resp.read()
+                _ollama_check(resp)
+                for line in resp.iter_lines():
+                    if line.strip():
+                        text = (json.loads(line).get("message") or {}).get("content")
+                        if text:
+                            yield text
+            return
         client, model = self._client_for(tier)
         stream = client.chat.completions.create(
             model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, stream=True
@@ -125,43 +179,28 @@ class OpenAICompatLLM:
         self, messages, *, tools, executor, tier="main", max_tokens=1024, temperature=0.2, max_steps=4
     ) -> Completion:
         """Loop di function-calling nativo (ReAct) con al massimo `max_steps` round di tool."""
-        client, model = self._client_for(tier)
         convo = list(messages)
-        total = Completion(text="", model=model)
+        total = Completion(text="", model=self.model_name(tier))
         start = time.perf_counter()
         for step in range(max_steps + 1):
-            kwargs: dict[str, Any] = {"model": model, "messages": convo, "max_tokens": max_tokens,
-                                      "temperature": temperature}
-            if step < max_steps:
-                kwargs["tools"] = tools
-            resp = client.chat.completions.create(**kwargs)
-            usage = getattr(resp, "usage", None)
-            total.prompt_tokens += getattr(usage, "prompt_tokens", 0) or 0
-            total.completion_tokens += getattr(usage, "completion_tokens", 0) or 0
-            msg = resp.choices[0].message
-            calls = getattr(msg, "tool_calls", None) or []
-            if not calls:
-                total.text = msg.content or ""
+            comp = self.complete(convo, tier=tier, max_tokens=max_tokens, temperature=temperature,
+                                 tools=tools if step < max_steps else None)
+            total.prompt_tokens += comp.prompt_tokens
+            total.completion_tokens += comp.completion_tokens
+            if not comp.calls:
+                total.text = comp.text
                 break
-            convo.append(
-                {
-                    "role": "assistant",
-                    "content": msg.content or "",
-                    "tool_calls": [
-                        {"id": c.id, "type": "function",
-                         "function": {"name": c.function.name, "arguments": c.function.arguments}}
-                        for c in calls
-                    ],
-                }
-            )
-            for call in calls:
+            convo.append({"role": "assistant", "content": comp.text, "tool_calls": [
+                {"id": c["id"], "type": "function", "function": {"name": c["name"], "arguments": c["arguments"]}}
+                for c in comp.calls]})
+            for call in comp.calls:
                 total.tool_calls += 1
                 try:
-                    args = json.loads(call.function.arguments or "{}")
+                    args = json.loads(call["arguments"] or "{}")
                 except json.JSONDecodeError:
                     args = {}
-                result = executor(call.function.name, args)
-                convo.append({"role": "tool", "tool_call_id": call.id, "content": result})
+                convo.append({"role": "tool", "tool_call_id": call["id"],
+                              "content": executor(call["name"], args)})
         total.ms = int((time.perf_counter() - start) * 1000)
         return total
 
@@ -169,6 +208,39 @@ class OpenAICompatLLM:
         client, model = self._client_for("embed")
         resp = client.embeddings.create(model=model, input=texts)
         return [item.embedding for item in resp.data]
+
+
+def _ollama_check(resp) -> None:
+    """Gli errori di Ollama con il loro messaggio (es. «model "x" not found»), così explain_error li riconosce."""
+    if resp.status_code >= 400:
+        try:
+            detail = resp.json().get("error", "")
+        except ValueError:
+            detail = resp.text
+        raise RuntimeError(f"{resp.status_code} {detail}".strip())
+
+
+def _to_ollama(message: Message) -> Message:
+    """Un messaggio in formato OpenAI per /api/chat di Ollama: testo + immagini base64, argomenti come oggetto."""
+    if isinstance(message.get("content"), list):
+        parts = message["content"]
+        text = "\n".join(p.get("text", "") for p in parts if p.get("type") == "text")
+        images = [p["image_url"]["url"].split(",", 1)[-1] for p in parts
+                  if p.get("type") == "image_url" and p["image_url"]["url"].startswith("data:")]
+        message = {**message, "content": text, **({"images": images} if images else {})}
+    if not message.get("tool_calls"):
+        return message
+    calls = []
+    for call in message["tool_calls"]:
+        fn = call.get("function") or {}
+        args = fn.get("arguments") or {}
+        if isinstance(args, str):
+            try:
+                args = json.loads(args or "{}")
+            except json.JSONDecodeError:
+                args = {}
+        calls.append({"function": {"name": fn.get("name", ""), "arguments": args}})
+    return {**message, "tool_calls": calls}
 
 
 # --------------------------------------------------------------------------- fake
