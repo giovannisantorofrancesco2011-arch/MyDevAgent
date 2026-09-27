@@ -275,3 +275,18 @@ textarea::placeholder { color: var(--vscode-input-placeholderForeground, var(--m
 .menu div.on, .menu div:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 .menu .name { font-family: var(--mono); white-space: nowrap; }
 .menu .desc { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* /context e /compact */
+.usage-bar { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin: 2px 0 8px;
+  background: repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.28) 0 2px, transparent 2px 4px); }
+.usage-bar span { display: block; height: 100%; }
+.usage .instr, .usage .sq.instr { background: #f0a8e0; }
+.usage .summary, .usage .sq.summary { background: #facc15; }
+.usage .msgs, .usage .sq.msgs { background: #22d3ee; }
+.usage .sq.free { background: rgba(148, 163, 184, 0.45); }
+.usage .sq { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; }
+.usage table.numbers { width: 100%; border-collapse: collapse; font-size: 12px; }
+.usage .numbers td:last-child { text-align: right; font-family: var(--mono); }
+.usage .card-head .dim { color: var(--muted); font-weight: 400; }
+.model.full { color: #fbbf24; }
+.usage .tip { color: var(--muted); font-size: 11px; margin: 6px 0 0; }

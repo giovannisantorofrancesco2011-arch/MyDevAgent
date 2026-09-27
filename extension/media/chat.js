@@ -28,6 +28,8 @@
     ["/auto", "sceglie Vio il team giusto"], ["/plan", "modalità piano: legge e propone, non modifica niente"],
     ["/undo", "annulla le modifiche dell'ultima richiesta"], ["/diff", "tutte le modifiche di questa sessione"],
     ["/stats", "statistiche e grafico dell'attività · /stats 7 · /stats 30"], ["/clear", "nuova chat"],
+    ["/context", "quanto contesto del modello stai usando"], ["/compact", "riassume la conversazione per fare spazio"],
+    ["/update", "aggiorna MyDevAgent all'ultima versione"],
     ["/impara", "modalità impara: ti lascio scrivere un pezzo di codice"],
     ["/init", "crea MYDEVAGENT.md con comandi e convenzioni del progetto"],
   ];
@@ -503,6 +505,34 @@
     append(card, true);
     say(h.streak > 1 ? `${h.streak} giorni di fila insieme! Continuiamo così.` : "Ecco cosa abbiamo fatto insieme!", "love", 5);
   }
+  function contextCard(u) {
+    const card = el("div", "card usage");
+    const parts = [["instr", "Istruzioni e memoria", u.instructions], ["summary", "Riassunto", u.summary],
+      ["msgs", `Messaggi (${u.count})`, u.messages]];
+    const bar = parts.map(([cls, , n]) => (n ? `<span class="${cls}" style="width:${Math.max(1, (100 * n) / u.window)}%"></span>` : "")).join("");
+    const rows = [...parts, ["free", "Libero", u.free]]
+      .map(([cls, label, n]) => `<tr><td><span class="sq ${cls}"></span>${escape(label)}</td><td>${num(n)} token</td></tr>`).join("");
+    card.innerHTML = `<div class="card-head">🧠 Contesto <span class="spacer"></span><b>${u.percent}%</b>&nbsp;di ${num(u.window)} token</div>` +
+      `<div class="card-body"><div class="usage-bar">${bar}</div><table class="numbers">${rows}</table>` +
+      `<p class="tip">Stima: circa 4 caratteri per token. Mi riassumo da sola all'${u.auto_compact}%, o quando scrivi /compact.</p></div>`;
+    append(card, true);
+  }
+  function compactedCard(r) {
+    if (!r.compacted) return append(el("div", "notice", "Conversazione ancora corta: niente da riassumere."), true);
+    const card = el("div", "card usage");
+    card.innerHTML = `<div class="card-head">✓ Conversazione compattata <span class="spacer"></span><span class="dim">liberati circa ${num(r.freed)} token</span></div>` +
+      `<div class="card-body">${markdown(r.summary || "")}<p class="tip">${r.turns} turni riassunti · /context mostra l'uso</p></div>`;
+    append(card, true);
+  }
+  function updateCard(m) {
+    const card = el("div", "card setup");
+    card.innerHTML = `<div class="card-head">✨ ${m.count} novità di MyDevAgent</div>` +
+      `<div class="card-body"><p>C'è una versione più nuova su GitHub. Aggiorno? I tuoi modelli e le impostazioni restano.</p></div>`;
+    addActions(card, m.actions);
+    card.querySelector("button")?.addEventListener("click", () => card.remove());
+    append(card, true);
+    say("Ci sono delle novità per me!", "love", 5);
+  }
   function heatmap(perDay, weeks) {
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7) - 7 * (weeks - 1));
@@ -543,7 +573,8 @@
   function updateState() {
     const dot = $("#dot");
     dot.className = "dot " + (!state.connected ? "off" : state.busy ? "busy" : "ready");
-    $("#model").textContent = state.connected ? state.model : "non collegata";
+    $("#model").textContent = state.connected ? state.model + (state.ctx != null ? ` · ctx ${state.ctx}%` : "") : "non collegata";
+    $("#model").classList.toggle("full", state.ctx != null && state.ctx >= 70);
     send.innerHTML = state.busy ? ICONS.stop : ICONS.send;
     send.classList.toggle("stop", state.busy);
     send.title = state.busy ? "Ferma (Esc)" : "Invia (Invio)";
@@ -579,6 +610,9 @@
       "/undo": () => post({ type: "command", name: "undo" }),
       "/diff": () => post({ type: "command", name: "diff" }),
       "/clear": () => post({ type: "command", name: "clear" }),
+      "/context": () => post({ type: "command", name: "context" }),
+      "/compact": () => post({ type: "command", name: "compact" }),
+      "/update": () => post({ type: "command", name: "update" }),
       "/stats": () => post({ type: "command", name: "stats", days: /^\d+$/.test(arg) ? Number(arg) : null }),
       "/impara": () => setOption({ learn: arg ? !/^(off|no)$/i.test(arg) : !state.learn }),
       "/plan": () => setOption({ permission: state.permission === "plan" ? "ask" : "plan" }),
@@ -728,6 +762,9 @@
     setup(m) { setup(m); if (m.say) say(m.say, m.kind === "error" ? "error" : "think"); },
     pull(m) { pullProgress(m); },
     stats(m) { statsCard(m); },
+    contextUsage(m) { contextCard(m); },
+    compacted(m) { compactedCard(m); },
+    update(m) { updateCard(m); },
     context(m) { const changed = JSON.stringify(m.context) !== JSON.stringify(state.context); state.context = m.context; if (changed) state.contextOff = false; renderContext(); },
     files(m) { state.files = m.files; },
     fill(m) { input.value = m.text; autosize(); input.focus(); input.selectionStart = input.selectionEnd = input.value.length; },

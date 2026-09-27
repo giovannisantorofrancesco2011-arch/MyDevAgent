@@ -51,6 +51,7 @@ export class Chat implements vscode.WebviewViewProvider, vscode.TextDocumentCont
   readonly state = {
     connected: false, busy: false, permission: "ask", team: "auto", learn: false, model: "",
     commands: [] as { name: string; description: string }[], agents: {} as Record<string, string>,
+    ctx: null as number | null, // % del contesto del modello usato (/context)
   };
   private readonly stateEmitter = new vscode.EventEmitter<void>();
   readonly onState = this.stateEmitter.event;
@@ -206,7 +207,61 @@ ${script("chat.js")}
       model: hello.models.main, commands: hello.commands, agents: hello.agents });
     if (this.transcript.length) this.post({ type: "history", messages: this.transcript });
     void this.refreshFiles();
+    // quale MyDevAgent sto usando: se ce ne sono più copie sul PC, così si vede subito
+    const where = hello.home ? `MyDevAgent in ${hello.home}${hello.installed ? ` · versione ${hello.installed}` : ""}` : "";
+    if (where) {
+      this.log.appendLine(where);
+      this.post({ type: "notice", text: `🟣 ${where}` });
+    }
     if (await this.checkHealth()) this.askTrust(hello.untrusted);
+    void this.refreshUsage();
+    void this.checkUpdates();
+  }
+
+  /** Novità di MyDevAgent su GitHub? Le propone con il pulsante «Aggiorna» (in silenzio se offline). */
+  private async checkUpdates(): Promise<void> {
+    try {
+      const { available } = await this.bridge.request("updates");
+      if (available > 0) {
+        this.post({ type: "update", count: available, actions: [{ id: "update", label: "Aggiorna", primary: true }] });
+      }
+    } catch {
+      // MyDevAgent vecchio (senza il metodo) o niente git: niente avviso
+    }
+  }
+
+  private async runUpdate(): Promise<void> {
+    if (this.state.busy) return this.showError(new BridgeError("Sto lavorando", "Aspetta la fine della richiesta, poi aggiorna."));
+    this.setup("info", "Aggiorno MyDevAgent…", "Scarico le novità da GitHub.", [], "Mi aggiorno…");
+    let result: any;
+    try {
+      result = await this.bridge.request("update");
+    } catch (error) {
+      const { message, hint } = errorInfo(error);
+      return this.setup("error", message, hint || "Aggiorna dal terminale con /update.",
+        [{ id: "dismiss", label: "Chiudi" }], "Non sono riuscita ad aggiornarmi.");
+    }
+    if (!result.ok) {
+      return this.setup("error", "Aggiornamento non riuscito", result.message, [{ id: "dismiss", label: "Chiudi" }],
+        "Non sono riuscita ad aggiornarmi.");
+    }
+    this.setup("none");
+    const news = (result.changes || []).slice(0, 8).map((c: string) => `• ${c}`).join("\n");
+    this.post({ type: "notice", text: result.message + (news ? `\n${news}` : "") });
+    if (result.restart) {
+      await this.connect(); // riparte con il codice nuovo
+      this.say("Aggiornata! Adesso ho le ultime novità.", "love", 5);
+    }
+  }
+
+  /** La percentuale di contesto usato, per la barra in alto. */
+  private async refreshUsage(): Promise<void> {
+    try {
+      const usage = await this.bridge.request("context");
+      this.setState({ ctx: usage.percent });
+    } catch {
+      this.setState({ ctx: null });
+    }
   }
 
   /** Ollama acceso e modelli presenti? Se manca qualcosa lo dice nella chat, con il pulsante per sistemarlo. */
@@ -366,7 +421,25 @@ ${script("chat.js")}
       await this.bridge.request("clear");
       this.transcript = [];
       this.post({ type: "reset" });
+      void this.refreshUsage();
       this.say("Chat nuova: dimmi pure!", "done", 4);
+    } else if (name === "context") {
+      const usage = await this.bridge.request("context");
+      this.setState({ ctx: usage.percent });
+      this.post({ type: "contextUsage", ...usage });
+    } else if (name === "compact") {
+      this.setState({ busy: true });
+      this.say("Riassumo la conversazione…", "think");
+      try {
+        const result = await this.bridge.request("compact");
+        this.setState({ ctx: result.usage.percent });
+        this.post({ type: "compacted", ...result });
+        if (result.compacted) this.say("Fatto: ho fatto spazio nella mia memoria.", "done", 4);
+      } finally {
+        this.setState({ busy: false });
+      }
+    } else if (name === "update") {
+      await this.runUpdate();
     } else if (name === "stats") {
       const result = await this.bridge.request("stats", days ? { days } : {});
       this.post({ type: "stats", ...result, label: days ? `ultimi ${days} giorni` : "da sempre" });
@@ -393,6 +466,7 @@ ${script("chat.js")}
         this.setup("none");
         return this.say("Ok, ho attivato gli hook e i server MCP del progetto.", "done", 5);
       case "dismiss": return this.setup("none");
+      case "update": return this.runUpdate();
       case "retry-last": if (this.lastPrompt) this.post({ type: "fill", text: this.lastPrompt });
     }
   }
@@ -474,6 +548,7 @@ ${script("chat.js")}
     if (end.answer) this.transcript.push({ role: "assistant", content: end.answer });
     for (const request of [...this.approvals.keys()]) await this.closeApproval(request);
     if (end.files?.length) void this.refreshFiles();
+    void this.refreshUsage();
   }
 
   // ------------------------------------------------- modifiche proposte
