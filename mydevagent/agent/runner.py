@@ -53,6 +53,15 @@ def wants_changes(request: str) -> bool:
             r"\s*(puoi|potresti|can you|could you)\b", text, re.IGNORECASE)):
         return False
     return bool(CHANGE_INTENT_RE.search(text))
+
+
+def clean_history(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Le risposte finite con «Nessun file modificato» non vanno ridate al modello: le imiterebbe, e la chat
+    ripresa (lo Studio riprende sempre l'ultima) continuerebbe a non modificare niente."""
+    return [{**m, "content": FAILED_TURN} if m.get("role") == "assistant" and NO_FILES_MARK in str(m.get("content", ""))
+            else m for m in history]
+
+
 EventHandler = Callable[[dict[str, Any]], None]
 # i nomi dei permessi di Claude Code, per il campo permission_mode degli hook
 PERMISSION_MODES = {"ask": "default", "auto-edit": "acceptEdits", "plan": "plan", "auto": "bypassPermissions"}
@@ -66,6 +75,9 @@ LEARN_PROMPT = """# Learning mode: the user is learning to program
 - End with a short "💡 Da sapere" section: 2-3 bullet points that explain the concepts you used, in simple words.
 - When the user says they wrote their part, read it, say what is right and explain gently what to fix, without
   rewriting it for them unless they ask."""
+NO_FILES_MARK = "Nessun file modificato"
+FAILED_TURN = ("(This earlier attempt failed: no file was changed. Ignore that answer and do the work with the "
+               "tools.)")
 NO_CHANGES = ("The request asks to change the project, but you have not modified any file. Apply the changes now "
               "with edit_file / write_file, run the tests, then give your final answer. If you believe no change is "
               "needed, explain why in one line. Code shown in your replies or in the task context is NOT applied: files "
@@ -161,7 +173,7 @@ class AgentRunner:
 
         state: TeamState = {
             "request": route.request,
-            "history": render_history(history or [], settings.context),
+            "history": render_history(clean_history(history or []), settings.context),
             "files": render_files(files, settings.context) if files else "",
             "rag": context,
             "route": {"mode": route.mode, "specialists": route.specialists, "gate": gates,
@@ -208,7 +220,8 @@ class AgentRunner:
             if (not tools.changed and not tools.user_denied and wants_changes(route.request)
                     and self.policy.mode != "plan"):
                 emit({"type": "info", "text": "nessun file modificato: chiedo all'agente di applicare le modifiche"})
-                result = loop.follow_up(NO_CHANGES)
+                # i modelli piccoli dimenticano la richiesta e rispondono «nessuna modifica richiesta»: la ripetiamo
+                result = loop.follow_up(f"{NO_CHANGES}\n\nThe request: {route.request}")
 
             review_note = ""
             rounds = settings.mode(route.mode).max_review_rounds if route.mode != "fast" else 0
@@ -394,7 +407,7 @@ class AgentRunner:
         elif tools.changed:
             lines.append("⚠️ Test: non eseguiti")
         if not tools.changed and request_wants_changes and not tools.user_denied:
-            lines.insert(0, "⚠️ Nessun file modificato: l'agente non ha applicato modifiche (riprova, o usa un modello "
+            lines.insert(0, f"⚠️ {NO_FILES_MARK}: l'agente non ha applicato modifiche (riprova, o usa un modello "
                             "più grande)")
         if review_note:
             lines.append(review_note)

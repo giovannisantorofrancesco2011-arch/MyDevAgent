@@ -110,6 +110,8 @@ class AgentLoop:
                 if calls:
                     self.emit({"type": "info", "text": "il modello ha scritto il codice nella risposta: lo applico ai file"})
             if not calls:
+                # per il registro dello Studio: cosa ha risposto davvero il modello quando non usa i tool
+                self.emit({"type": "model_reply", "text": raw[:2000]})
                 if self._should_nudge(visible, res):
                     self.nudged = True
                     self.emit({"type": "info", "text": "ricordo al modello di usare i tool"})

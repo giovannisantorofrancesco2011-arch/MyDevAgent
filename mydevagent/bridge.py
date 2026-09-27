@@ -321,6 +321,9 @@ class Bridge:
         answer, error = "", None
 
         def on_event(event: dict[str, Any]) -> None:
+            if event.get("type") == "model_reply":  # solo nel registro (Visualizza > Output > MyDevAgent)
+                print(f"[risposta del modello senza tool]\n{event['text']}\n", file=sys.stderr, flush=True)
+                return
             record.on_event(event)
             self.notify("event", {"turn": turn, "event": event})
 

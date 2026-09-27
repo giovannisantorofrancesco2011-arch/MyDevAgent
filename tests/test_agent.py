@@ -374,6 +374,21 @@ def test_runner_insists_when_no_file_changed(project, settings):
     assert (project / "src" / "sub.py").exists() and "Nessun file modificato" not in out
 
 
+def test_failed_turns_are_not_shown_to_the_model(project, settings):
+    # la chat ripresa dallo Studio conteneva le risposte «nessuna modifica»: il modello le copiava
+    llm = ScriptedLLM(steps=["Non so.",
+                             T("write_file", path="src/sub.py", content="x = 1\n"), "Fatto."])
+    history = [{"role": "user", "content": "crea src/sub.py"},
+               {"role": "assistant", "content": "No change is needed.\n\n---\n⚠️ Nessun file modificato: …"}]
+    out = "".join(AgentRunner(Orchestrator(settings, llm=llm), project, PermissionPolicy(mode="auto", root=project))
+                  .run("/fast crea src/sub.py", history=history))
+    task = [c for c in llm.calls if c.get("role") == "agent"][0]["messages"][1]["content"]
+    assert "This earlier attempt failed" in task and "No change is needed" not in task
+    retry = [c for c in llm.calls if c.get("role") == "agent"][1]["messages"][-1]["content"]
+    assert retry.endswith("The request: crea src/sub.py")
+    assert (project / "src" / "sub.py").exists() and "Nessun file modificato" not in out
+
+
 def test_footer_warns_when_nothing_changed(project, settings):
     llm = ScriptedLLM(steps=["Non so come fare.", "Ancora niente."])
     out = "".join(AgentRunner(Orchestrator(settings, llm=llm), project,
