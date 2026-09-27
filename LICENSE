@@ -1,21 +1,84 @@
-MIT License
+MyDevAgent — Licenza d'uso / License
+Copyright (c) 2026 gio (giovannisantorofrancesco2011-arch). Tutti i diritti riservati. All rights reserved.
 
-Copyright (c) 2026 gio (giovannisantorofrancesco2011-arch) e i contributori di MyDevAgent
+MyDevAgent NON è software open source. Il codice è visibile su GitHub, ma questo non dà il permesso
+di copiarlo. / MyDevAgent is NOT open source software. The code is visible on GitHub, but that does
+not give permission to copy it.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+──────────────────────────────── ITALIANO ────────────────────────────────
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. Cosa è protetto
+   Questa licenza copre MyDevAgent, MyDevAgent Studio, MyCode e tutto ciò che li accompagna: codice,
+   testi, prompt, configurazioni, immagini, sito e documentazione. Sono protetti in particolare:
+   - il nome «MyDevAgent», «MyDevAgent Studio» e «MyCode»;
+   - il personaggio Vio: il suo aspetto, la pixel art, le espressioni, le animazioni e il suo stile;
+   - il tema viola e nero e l'aspetto grafico complessivo.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. Cosa puoi fare
+   Puoi scaricare MyDevAgent e MyDevAgent Studio dai canali ufficiali e usarli gratis sul tuo
+   computer, per progetti personali o di lavoro. Il codice che scrivi usando MyDevAgent è tuo.
+
+3. Cosa NON puoi fare senza il permesso scritto del titolare
+   - copiare, in tutto o in parte, il codice, i prompt, le immagini o il sito;
+   - modificarli, tradurli o creare opere derivate (anche «ispirate» in modo riconoscibile);
+   - ridistribuirli, ripubblicarli, venderli, darli in affitto o offrirli come servizio;
+   - usare Vio, o un personaggio che lo imiti, e usare il nome o il marchio MyDevAgent per altri
+     prodotti;
+   - togliere o cambiare gli avvisi di copyright e di licenza.
+   Un «fork» su GitHub è permesso solo nei limiti delle regole di GitHub (per vedere il codice) e non
+   dà nessuno dei diritti vietati qui sopra.
+
+4. Componenti di terze parti
+   Alcune parti non sono di MyDevAgent e restano sotto la loro licenza originale, che questa licenza
+   non cambia: per esempio VSCodium e VS Code (licenza MIT) usati da MyDevAgent Studio, il pacchetto
+   della lingua italiana di Microsoft (MIT), le librerie Python e npm e i modelli AI (per esempio
+   Qwen, Apache-2.0). I loro avvisi di copyright restano dove sono.
+
+5. Nessuna garanzia
+   Il software è fornito «così com'è», senza garanzie di alcun tipo. Il titolare non risponde di
+   danni derivanti dal suo uso.
+
+6. Versioni precedenti
+   Questa licenza vale dal 27 settembre 2026 e sostituisce la licenza MIT usata prima di quella data.
+
+Per chiedere un permesso apri una issue su
+https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent/issues
+
+──────────────────────────────── ENGLISH ─────────────────────────────────
+
+1. What is protected
+   This license covers MyDevAgent, MyDevAgent Studio, MyCode and everything that comes with them:
+   code, text, prompts, configuration, images, website and documentation. In particular:
+   - the names "MyDevAgent", "MyDevAgent Studio" and "MyCode";
+   - the character Vio: its look, pixel art, expressions, animations and style;
+   - the purple and black theme and the overall visual identity.
+
+2. What you may do
+   You may download MyDevAgent and MyDevAgent Studio from the official channels and use them for
+   free on your own computer, for personal or work projects. The code you write with MyDevAgent is
+   yours.
+
+3. What you may NOT do without the copyright holder's written permission
+   - copy the code, prompts, images or website, in whole or in part;
+   - modify, translate or create derivative works (including recognisably "inspired" ones);
+   - redistribute, republish, sell, rent or offer them as a service;
+   - use Vio, or a character imitating it, or use the MyDevAgent name or brand for other products;
+   - remove or alter copyright and license notices.
+   A GitHub "fork" is allowed only as far as GitHub's terms require (to view the code) and grants
+   none of the rights denied above.
+
+4. Third-party components
+   Some parts are not MyDevAgent's own and stay under their original licenses, which this license
+   does not change: for example VSCodium and VS Code (MIT License) used by MyDevAgent Studio,
+   Microsoft's language packs (MIT), Python and npm libraries, and AI models (for example Qwen,
+   Apache-2.0). Their copyright notices stay in place.
+
+5. No warranty
+   The software is provided "as is", without warranty of any kind. The copyright holder is not
+   liable for any damage arising from its use.
+
+6. Earlier versions
+   This license applies from 27 September 2026 and replaces the MIT License used before that date.
+
+To ask for permission, open an issue at
+https://github.com/giovannisantorofrancesco2011-arch/MyDevAgent/issues
