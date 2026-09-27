@@ -1,5 +1,8 @@
 # MyDevAgent
 
+> © 2026 gio. **Tutti i diritti riservati — non è open source.** Il codice è visibile ma non si può copiare,
+> modificare o ridistribuire, e Vio non si può copiare. Vedi [LICENSE](LICENSE).
+
 **Assistente di programmazione local-first con 35 agenti specializzati** (15 nel nucleo + 20 per la
 modalità `/ultra-deep`). Gira tutto sul tuo PC (GPU 8 GB+ o solo CPU), funziona offline e, quando sei
 online, fa ricerche web in tempo reale. Come Claude Code **lavora direttamente sui file del tuo progetto**:
@@ -251,5 +254,7 @@ ruff check .
 MYDEVAGENT_FAKE_LLM=1 mydevagent                 # prova l'interfaccia senza modello
 ```
 
-Licenza MIT. I modelli hanno le loro licenze (Qwen: Apache-2.0 per la maggior parte delle taglie —
+**Licenza: tutti i diritti riservati.** MyDevAgent **non è open source**: puoi scaricarlo e usarlo gratis, ma non puoi
+copiare, modificare, ridistribuire o vendere il codice, né copiare Vio (aspetto, pixel art, espressioni, stile), lo Studio,
+il nome o il tema grafico. I dettagli sono in [LICENSE](LICENSE). I modelli hanno le loro licenze (Qwen: Apache-2.0 per la maggior parte delle taglie —
 verifica sempre la model card).
