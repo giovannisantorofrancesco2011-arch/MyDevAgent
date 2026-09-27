@@ -118,7 +118,7 @@ mydevagent
 | `gpu8` | GPU 8 GB (RTX 3060/4060, M1/M2 16 GB) | qwen2.5-coder:7b |
 | `gpu16` | GPU 12–16 GB | qwen2.5-coder:14b |
 | `gpu24` | GPU 24 GB / Mac 32 GB+ | qwen3-coder:30b (MoE, velocissimo) |
-| `mycode` | GPU 8 GB | MyCode, il nostro qwen2.5-coder:7b addestrato ([come crearlo](finetune/mycode/LEGGIMI.md)) |
+| `mycode` | GPU 12 GB (con 8 GB funziona, più lento) | MyCode, il nostro qwen2.5-coder:14b addestrato ([come crearlo](finetune/mycode/LEGGIMI.md)) |
 
 Cambia profilo con `MYDEVAGENT_PROFILE=gpu16` in `.env` o `mydevagent -p gpu16`. `mydevagent doctor` ti dice
 quale profilo è adatto al tuo hardware.

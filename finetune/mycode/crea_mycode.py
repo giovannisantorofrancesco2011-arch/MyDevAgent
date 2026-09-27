@@ -2,10 +2,10 @@
 """Crea (o aggiorna) il modello `mycode` in Ollama.
 
   python finetune/mycode/crea_mycode.py            # dal modello addestrato (il file .gguf)
-  python finetune/mycode/crea_mycode.py --subito   # prima dell'addestramento: qwen2.5-coder:7b + manuale
+  python finetune/mycode/crea_mycode.py --subito   # prima dell'addestramento: qwen2.5-coder:14b + manuale
 
 Il file .gguf lo cerca in finetune/mycode/outputs/ e in finetune/mycode/ (lì va messo quello scaricato
-da Colab). Il formato della chat e i token di stop li copia dal modello normale qwen2.5-coder:7b, così MyCode
+da Colab). Il formato della chat e i token di stop li copia dal modello normale qwen2.5-coder:14b, così MyCode
 parla con Ollama esattamente come lui. Nel prompt di sistema mette SYSTEM.txt più il manuale MANUALE.md.
 """
 
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-BASE = "qwen2.5-coder:7b"
+BASE = "qwen2.5-coder:14b"
 # usato solo se il modello normale non c'è: il formato ChatML di Qwen
 FALLBACK_TEMPLATE = """{{ if .System }}<|im_start|>system
 {{ .System }}<|im_end|>

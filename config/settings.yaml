@@ -56,7 +56,8 @@ profiles:
     num_ctx: 32768
     native_tools: true
   mycode:
-    # MyCode: Qwen2.5-Coder 7B addestrato sui tuoi file .md (vedi finetune/mycode/LEGGIMI.md). GPU da 8 GB.
+    # MyCode: Qwen2.5-Coder 14B addestrato sui tuoi file .md (vedi finetune/mycode/LEGGIMI.md).
+    # Pesa ~9 GB: con una GPU da 8 GB una parte va in RAM, quindi è più lento del 7B.
     main: "mycode"
     fast: "qwen2.5-coder:1.5b"
     reasoning: "mycode"

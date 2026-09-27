@@ -1,8 +1,7 @@
-# MyCode: Qwen2.5-Coder 7B addestrato (QLoRA) sul manuale e sugli esempi in finetune/mycode/data.
-# Impostazioni per una GPU da 8 GB (RTX 4060): contesto 2048, un esempio alla volta.
-# Se va in "CUDA out of memory": chiudi i programmi che usano la GPU, oppure usa il notebook Colab,
-# oppure passa al 3B:  base_model: unsloth/Qwen2.5-Coder-3B-Instruct-bnb-4bit
-base_model: unsloth/Qwen2.5-Coder-7B-Instruct-bnb-4bit
+# MyCode: Qwen2.5-Coder 14B addestrato (QLoRA) sul manuale e sugli esempi in finetune/mycode/data.
+# Il 14B si addestra su Colab (GPU T4 da 16 GB): con 8 GB di VRAM non ci sta.
+# Per addestrare sul PC con la RTX 4060 usa il 7B:  base_model: unsloth/Qwen2.5-Coder-7B-Instruct-bnb-4bit
+base_model: unsloth/Qwen2.5-Coder-14B-Instruct-bnb-4bit
 max_seq_length: 2048
 load_in_4bit: true
 
@@ -35,5 +34,5 @@ train:
 
 export:
   gguf_dir: finetune/mycode/outputs/gguf
-  quantization: q4_k_m    # ~4,7 GB: entra nella RTX 4060 con 16k di contesto
+  quantization: q4_k_m    # ~9 GB col 14B: sulla RTX 4060 una parte va in RAM (più lento)
   ollama_name: mycode
