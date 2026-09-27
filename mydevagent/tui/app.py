@@ -1238,7 +1238,7 @@ class TuiApp:
                            f"{freed:,} token · [dim]/context[/]".replace(",", "."))
         for line in extras.summary_of(compacted).splitlines()[:12]:
             if line.strip():
-                self.console.print(f"     [dim]{escape(line.strip())}[/]")
+                self.console.print(f"     [dim]{escape(line.strip().replace('**', ''))}[/]")
 
     # ------------------------------------------------------------- shell
     def run_shell(self, command: str) -> None:
