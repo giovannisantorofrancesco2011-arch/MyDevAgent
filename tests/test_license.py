@@ -68,3 +68,12 @@ def test_deactivate_frees_the_key(monkeypatch):
     assert "altro" in license.deactivate()
     assert calls[1] == ("deactivate", {"license_key": "ABC", "instance_id": "inst-1"})
     assert license.status(now=license._load()["first_run"]).kind == "prova"
+
+
+def test_plus_key_unlocks_everything(monkeypatch):
+    plus = reply(expires="2026-11-01T00:00:00Z")
+    plus["meta"]["variant_name"] = "Plus mensile"
+    shop(monkeypatch, [plus, reply()])
+    state = license.activate("PLUS-1")
+    assert state.plus and state.kind == "abbonamento Plus"
+    assert not license.activate("BASE-1").plus

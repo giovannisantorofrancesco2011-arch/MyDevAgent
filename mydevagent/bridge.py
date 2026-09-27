@@ -200,7 +200,7 @@ class Bridge:
         removed = license_mod.deactivate() if p.get("remove") else ""
         state = license_mod.activate(str(p["key"])) if p.get("key") else license_mod.status()
         return {"ok": state.ok, "kind": state.kind, "message": removed or state.message,
-                "days_left": state.days_left, "buy": license_mod.BUY_URL}
+                "days_left": state.days_left, "plus": state.plus, "buy": license_mod.BUY_URL}
 
     def m_cancel(self, p: dict[str, Any]) -> dict[str, Any]:
         self.cancel.set()

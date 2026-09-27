@@ -35,6 +35,7 @@ class Status:
     kind: str  # "gratis", "prova", "abbonamento", "per sempre", "scaduta"
     message: str
     days_left: int | None = None
+    plus: bool = False  # abbonamento Plus: lo stesso codice vale anche per Studio Plus e MyCode
 
 
 def _path() -> Path:
@@ -61,6 +62,12 @@ def _post(action: str, **fields: str) -> dict[str, Any]:
         return response.json()
     except (httpx.HTTPError, ValueError) as exc:
         raise OSError(str(exc)) from exc
+
+
+def _plus(reply: dict[str, Any]) -> bool:
+    """Il prodotto o la variante su Lemon Squeezy si chiama «... Plus»."""
+    meta = reply.get("meta") or {}
+    return "plus" in f"{meta.get('product_name', '')} {meta.get('variant_name', '')}".lower()
 
 
 def _kind(reply: dict[str, Any]) -> str:
@@ -92,7 +99,7 @@ def activate(key: str) -> Status:
     if problem:
         return Status(False, "scaduta", f"Chiave non attivata: {problem}.")
     data = _load()
-    data.update(key=key, instance=(reply.get("instance") or {}).get("id", ""), kind=_kind(reply),
+    data.update(key=key, instance=(reply.get("instance") or {}).get("id", ""), kind=_kind(reply), plus=_plus(reply),
                 checked=time.time())
     _save(data)
     return status()
@@ -107,7 +114,7 @@ def deactivate() -> str:
         _post("deactivate", license_key=data["key"], instance_id=data.get("instance", ""))
     except OSError:
         return "Non riesco a collegarmi al server delle licenze: riprova quando sei online."
-    for field in ("key", "instance", "kind", "checked"):
+    for field in ("key", "instance", "kind", "plus", "checked"):
         data.pop(field, None)
     _save(data)
     return "Chiave tolta da questo computer: ora puoi attivarla su un altro."
@@ -132,14 +139,14 @@ def status(now: float | None = None) -> Status:
                 problem = _problem(reply)
                 if problem:
                     return Status(False, "scaduta", f"La tua licenza non è più valida: {problem}.")
-                data.update(kind=_kind(reply), checked=now)
+                data.update(kind=_kind(reply), plus=_plus(reply), checked=now)
                 _save(data)
         offline = int((now - data.get("checked", 0)) // DAY)
         if offline > GRACE_DAYS:
             return Status(False, "scaduta", f"Sono {offline} giorni che non riesco a controllare la licenza: "
                                             "collegati a internet una volta e riprova.")
-        kind = data.get("kind", "per sempre")
-        return Status(True, kind, f"Licenza attiva ({kind}). Grazie per il supporto!")
+        kind = data.get("kind", "per sempre") + (" Plus" if data.get("plus") else "")
+        return Status(True, kind, f"Licenza attiva ({kind}). Grazie per il supporto!", plus=bool(data.get("plus")))
     left = TRIAL_DAYS - int((now - data["first_run"]) // DAY)
     if left > 0:
         return Status(True, "prova", f"Prova gratuita: {'ultimo giorno' if left == 1 else f'ancora {left} giorni'}.",
