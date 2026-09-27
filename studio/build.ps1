@@ -73,7 +73,7 @@ $rcedit = Join-Path $build "rcedit.exe"
 Invoke-WebRequest "https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe" -OutFile $rcedit -UseBasicParsing
 & $rcedit $exe.FullName --set-icon (Join-Path $branding "vio.ico") `
   --set-version-string FileDescription "MyDevAgent Studio" --set-version-string ProductName "MyDevAgent Studio" `
-  --set-version-string CompanyName "MyDevAgent" --set-version-string LegalCopyright "MyDevAgent Studio, basato su VSCodium (MIT)"
+  --set-version-string CompanyName "MyDevAgent" --set-version-string LegalCopyright "(c) 2026 gio - MyDevAgent Studio. Tutti i diritti riservati. Basato su VSCodium (MIT)"
 Controlla "rcedit"
 $sostituite = 0
 foreach ($file in Get-ChildItem $app -Recurse -File -Include "letterpress-*.svg", "code-icon.svg", "code_150x150.png", "code_70x70.png") {

@@ -2,9 +2,9 @@
   "name": "mydevagent",
   "displayName": "MyDevAgent",
   "description": "Vio, il tuo agente di programmazione locale: chat, modifiche con conferma, Ctrl+I e Tab. Funziona con Ollama, senza cloud.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "mydevagent",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "icon": "media/icon.png",
   "repository": {
     "type": "git",

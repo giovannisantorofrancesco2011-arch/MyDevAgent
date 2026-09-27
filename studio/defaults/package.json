@@ -4,7 +4,7 @@
   "description": "Le impostazioni di partenza di MyDevAgent Studio: tema viola e niente aggiornamenti di VSCodium.",
   "version": "0.1.1",
   "publisher": "mydevagent",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "engines": {
     "vscode": "^1.90.0"
   },
