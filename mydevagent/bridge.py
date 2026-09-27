@@ -27,6 +27,7 @@ from typing import IO, Any
 
 from . import __version__, fim, stats
 from . import hooks as hooks_mod
+from . import license as license_mod
 from . import mcp as mcp_mod
 from . import update as update_mod
 from .agent import CheckpointStore, PermissionPolicy
@@ -154,7 +155,7 @@ class Bridge:
             "untrusted": {"hooks": [f"{h.event}: {h.command}" for h in hooks_mod.untrusted(self.root)],
                           "mcp": [f"{s.name}: {s.describe()}" for s in mcp_mod.untrusted(self.root)]},
             "commands": self._commands(), "agents": {a.key: a.name for a in self.orch.registry},
-            "home": str(update_mod.HOME), "installed": update_mod.current(),
+            "home": str(update_mod.HOME), "installed": update_mod.current(), "license": self.m_license({}),
         }
 
     def m_set(self, p: dict[str, Any]) -> dict[str, Any]:
@@ -177,6 +178,9 @@ class Bridge:
         text = str(p.get("text", "")).strip()
         if not text:
             raise ValueError("messaggio vuoto")
+        state = license_mod.status()
+        if not state.ok:
+            raise RuntimeError(state.message)
         if self.busy is not None:
             raise RuntimeError("Sto già lavorando: aspetta la fine o premi Stop")
         display = text
@@ -190,6 +194,13 @@ class Bridge:
         agent = self.agent or task != text  # /init, /skill e i comandi lavorano sempre sui file
         threading.Thread(target=self._turn, args=(turn, task, files, agent, display), daemon=True).start()
         return {"turn": turn}
+
+    def m_license(self, p: dict[str, Any]) -> dict[str, Any]:
+        """Stato della licenza; con `key` la attiva, con `remove` la toglie da questo computer."""
+        removed = license_mod.deactivate() if p.get("remove") else ""
+        state = license_mod.activate(str(p["key"])) if p.get("key") else license_mod.status()
+        return {"ok": state.ok, "kind": state.kind, "message": removed or state.message,
+                "days_left": state.days_left, "buy": license_mod.BUY_URL}
 
     def m_cancel(self, p: dict[str, Any]) -> dict[str, Any]:
         self.cancel.set()

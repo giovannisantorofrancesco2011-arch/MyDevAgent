@@ -36,6 +36,7 @@ from rich.table import Table
 
 from .. import health, plugins, templates
 from .. import hooks as hooks_mod
+from .. import license as license_mod
 from .. import mcp as mcp_mod
 from .. import stats as stats_mod
 from .. import update as update_mod
@@ -100,6 +101,7 @@ COMMANDS = {
     "/plugin": "plugin (formato Claude Code) · /plugin install <utente/repo> · update · remove",
     "/hooks": "hook attivi (comandi automatici) · /hooks trust attiva quelli del progetto",
     "/mcp": "server MCP (strumenti esterni) · /mcp reload · /mcp trust",
+    "/licenza": "la tua licenza · /licenza <chiave> la attiva · /licenza rimuovi la toglie da questo computer",
     "/update": "aggiorna MyDevAgent all'ultima versione (modelli e impostazioni restano)",
     "/resume": "riprendi una sessione precedente in questa cartella",
     "/export": "salva la conversazione in Markdown",
@@ -641,6 +643,8 @@ class TuiApp:
             self._mcp(arg)
         elif cmd == "/update":
             self._update()
+        elif cmd in ("/licenza", "/license"):
+            self._license(arg)
         elif cmd == "/vio":
             self._pats = getattr(self, "_pats", 0) + 1
             self.say(mascot.PATS[(self._pats - 1) % len(mascot.PATS)], "love")
@@ -666,6 +670,16 @@ class TuiApp:
         else:
             c.print(f"[red]⎿  comando sconosciuto: {escape(cmd)}[/] [dim](/help)[/]")
         return True
+
+    def _license(self, arg: str) -> None:
+        if arg.lower() in ("rimuovi", "remove"):
+            self.console.print(f"[dim]⎿  {escape(license_mod.deactivate())}[/]")
+            return
+        state = license_mod.activate(arg) if arg else license_mod.status()
+        color = "green" if state.ok else "red"
+        self.console.print(f"[{color}]⎿  {escape(state.message)}[/]")
+        if not arg and state.kind in ("prova", "scaduta"):
+            self.console.print(f"[dim]   Abbonamento o acquisto una volta: {license_mod.BUY_URL}[/]")
 
     def _stats(self, arg: str) -> None:
         choice = arg.lower() or "sempre"
@@ -1266,6 +1280,11 @@ class TuiApp:
         return collect_attachments(self.root, text, self.extra_dirs)
 
     def submit(self, text: str, display: str | None = None, guest: bool = False) -> str:
+        state = license_mod.status()
+        if not state.ok:
+            self.console.print(f"[red]⎿  {escape(state.message)}[/]")
+            self.say("Per continuare mi serve una licenza: /licenza <chiave>", "error")
+            return ""
         if extras.needs_compact(self._usage(), self.session.history, AUTO_COMPACT_MESSAGES):
             self._compact()
         files = self.collect_attachments(text)
@@ -1433,6 +1452,9 @@ class TuiApp:
             self.startup_check()
         self.start_project()
         if self._startup_check:
+            state = license_mod.status()
+            if state.kind in ("prova", "scaduta"):
+                self._license("")
             threading.Thread(target=self._check_updates, daemon=True).start()
         while True:
             self.console.print()
