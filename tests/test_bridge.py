@@ -183,6 +183,28 @@ def test_stats_method(settings, project):
     assert result["session"]["turns"] == 1 and result["history"]["turns"] == 1 and result["history"]["streak"] == 1
 
 
+def test_context_compact_and_update_methods(settings, project, monkeypatch):
+    from mydevagent import update
+
+    bridge, wire = make(settings, project, FakeLLM())
+    hello = call(bridge, wire, 1, "hello")["result"]
+    assert hello["home"] == str(update.HOME) and "installed" in hello
+    assert call(bridge, wire, 2, "compact")["result"]["compacted"] is False  # conversazione troppo corta
+    bridge.session.history = [{"role": r, "content": "x" * 800} for r in ["user", "assistant"] * 3]
+    usage = call(bridge, wire, 3, "context")["result"]
+    assert usage["count"] == 6 and usage["window"] == settings.active_profile.num_ctx and usage["auto_compact"] == 85
+    assert usage["free"] == usage["window"] - usage["instructions"] - usage["messages"]
+    done = call(bridge, wire, 4, "compact")["result"]
+    assert done["compacted"] and done["turns"] == 3 and done["freed"] > 0 and done["summary"]
+    assert done["usage"]["count"] == 0 and len(bridge.session.history) == 2
+    monkeypatch.setattr(update, "available", lambda: 2)
+    monkeypatch.setattr(update, "update", lambda: update.Result(True, "Aggiornato: 2 novità.", ["a", "b"], True))
+    assert call(bridge, wire, 5, "updates")["result"]["available"] == 2
+    assert call(bridge, wire, 6, "update")["result"] == {"ok": True, "message": "Aggiornato: 2 novità.",
+                                                          "changes": ["a", "b"], "restart": True,
+                                                          "installed": update.current()}
+
+
 def test_bridge_process_keeps_stdout_clean(tmp_path):
     env = {**os.environ, "MYDEVAGENT_FAKE_LLM": "1", "MYDEVAGENT_OFFLINE": "1",
            "MYDEVAGENT_STATE_DIR": str(tmp_path / "state")}

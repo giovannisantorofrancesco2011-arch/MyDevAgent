@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -78,13 +79,79 @@ def history_chars(history: list[dict[str, Any]]) -> int:
     return sum(len(str(m.get("content", ""))) for m in history)
 
 
+SUMMARY_MARK = "[Summary of the previous conversation]"
+SUMMARY_ACK = "OK, I have the context. Let's continue."
+AUTO_COMPACT_AT = 0.85  # oltre questa parte del contesto la conversazione si riassume da sola
+
+
 def compact_history(llm, history: list[dict[str, Any]]) -> list[dict[str, Any]]:
     transcript = "\n\n".join(f"{m['role']}: {m['content']}" for m in history)[-60_000:]
     summary = llm.complete([{"role": "system", "content": COMPACT_PROMPT},
                             {"role": "user", "content": transcript}], tier="fast", max_tokens=600,
                            temperature=0.1).text.strip()
-    return [{"role": "user", "content": "[Summary of the previous conversation]\n" + summary},
-            {"role": "assistant", "content": "OK, I have the context. Let's continue."}]
+    return [{"role": "user", "content": f"{SUMMARY_MARK}\n{summary}"},
+            {"role": "assistant", "content": SUMMARY_ACK}]
+
+
+def summary_of(history: list[dict[str, Any]]) -> str:
+    """Il riassunto fatto da /compact, se la conversazione ne ha uno."""
+    for m in history:
+        content = str(m.get("content", ""))
+        if content.startswith(SUMMARY_MARK):
+            return content.removeprefix(SUMMARY_MARK).strip()
+    return ""
+
+
+@dataclass
+class ContextUsage:
+    """Quanto del contesto del modello occupa una richiesta (stima: ~4 caratteri per token)."""
+
+    window: int
+    instructions: int
+    summary: int
+    messages: int
+    count: int  # messaggi della conversazione (senza il riassunto)
+
+    @property
+    def used(self) -> int:
+        return self.instructions + self.summary + self.messages
+
+    @property
+    def free(self) -> int:
+        return max(0, self.window - self.used)
+
+    @property
+    def percent(self) -> int:
+        return min(100, round(100 * self.used / self.window)) if self.window else 0
+
+    def to_dict(self) -> dict[str, int]:
+        return {"window": self.window, "instructions": self.instructions, "summary": self.summary,
+                "messages": self.messages, "count": self.count, "free": self.free, "percent": self.percent,
+                "auto_compact": round(AUTO_COMPACT_AT * 100)}
+
+
+def context_usage(settings, persona: str, root: Path, history: list[dict[str, Any]]) -> ContextUsage:
+    """Le stesse parti che l'agente manda al modello: istruzioni, memoria e mappa del progetto, conversazione."""
+    from ..agent.context import project_context
+    from ..agent.loop import AGENT_RULES
+    from ..agent.protocol import describe_tools
+    from ..agent.tools import SPECS
+    from ..state import render_history
+
+    def tokens(text: str) -> int:
+        return (len(text) + 3) // 4
+
+    summary = [m for m in history if str(m.get("content", "")).startswith(SUMMARY_MARK)
+               or m.get("content") == SUMMARY_ACK]
+    rest = [m for m in history if m not in summary]
+    instructions = "\n\n".join((persona, AGENT_RULES, describe_tools(SPECS), project_context(root)))
+    return ContextUsage(window=settings.active_profile.num_ctx, instructions=tokens(instructions),
+                        summary=sum(tokens(str(m.get("content", ""))) for m in summary),
+                        messages=tokens(render_history(rest, settings.context)), count=len(rest))
+
+
+def needs_compact(usage: ContextUsage, history: list[dict[str, Any]], max_messages: int) -> bool:
+    return len(history) >= max_messages or (len(history) >= 4 and usage.percent >= AUTO_COMPACT_AT * 100)
 
 
 # ------------------------------------------------------------------ notifiche

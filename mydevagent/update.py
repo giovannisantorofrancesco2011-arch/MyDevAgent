@@ -45,6 +45,17 @@ def available() -> int:
     return int(count.stdout.strip()) if count.returncode == 0 and count.stdout.strip().isdigit() else 0
 
 
+def current() -> str:
+    """La versione installata: «0d76099 del 2026-09-27» (vuota se non è una copia git)."""
+    if not (HOME / ".git").exists():
+        return ""
+    try:
+        out = _git("log", "-1", "--format=%h del %cs", timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return out.stdout.strip() if out.returncode == 0 else ""
+
+
 def update() -> Result:
     if not (HOME / ".git").exists():
         return Result(False, f"{HOME} non è una copia git (forse è uno zip): segui «Aggiornare» nel README per "

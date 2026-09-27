@@ -202,6 +202,28 @@ def test_compact_history(settings, project):
     assert len(compacted) == 2 and compacted[0]["content"].startswith("[Summary")
 
 
+def test_context_and_compact_commands(settings, project):
+    from mydevagent.tui import extras
+
+    console = record_console()
+    with create_pipe_input() as pipe:
+        app = TuiApp(Orchestrator(settings, llm=FakeLLM()), console=console, prompt_input=pipe,
+                     prompt_output=DummyOutput(), root=project, background=False)
+    app.session.history = [{"role": r, "content": f"messaggio {i} " + "x" * 400}
+                           for i, r in enumerate(["user", "assistant"] * 3)]
+    app.handle_command("/context")
+    out = console.export_text()
+    assert "Istruzioni e memoria" in out and "Messaggi (6)" in out and "di 16.384 token" in out
+    assert "ctx " in "".join(t for _, t in app.toolbar())
+    app.handle_command("/compact")
+    out = console.export_text()
+    assert "Conversazione compattata (3 turni) · liberati circa" in out
+    assert extras.summary_of(app.session.history) and app._usage().count == 0 and app._usage().summary > 0
+    # oltre l'85% del contesto si riassume da sola, anche con pochi messaggi
+    full = extras.ContextUsage(window=1000, instructions=500, summary=0, messages=400, count=4)
+    assert extras.needs_compact(full, [{}] * 4, 20) and not extras.needs_compact(full, [{}] * 2, 20)
+
+
 def test_permission_cycle_and_toolbar(settings, project):
     orch = Orchestrator(settings, llm=FakeLLM())
     with create_pipe_input() as pipe:

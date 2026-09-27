@@ -28,6 +28,7 @@ from typing import IO, Any
 from . import __version__, fim, stats
 from . import hooks as hooks_mod
 from . import mcp as mcp_mod
+from . import update as update_mod
 from .agent import CheckpointStore, PermissionPolicy
 from .agent.context import collect_attachments
 from .agent.permissions import MODES as PERMISSION_MODES
@@ -46,7 +47,7 @@ PROTOCOL = 1
 TEAMS = ("auto", "fast", "balanced", "deep", "ultra-deep")
 AUTO_COMPACT_MESSAGES = 20
 MAX_FILE_CHARS = 1_500_000  # oltre, l'editor mostra solo il diff (niente file interi affiancati)
-BACKGROUND = {"complete", "inline_edit", "pull", "health"}  # non bloccano la lettura dei messaggi
+BACKGROUND = {"complete", "inline_edit", "pull", "health", "updates", "update", "compact"}  # non bloccano la lettura dei messaggi
 INLINE_SYSTEM = """You are an expert programmer editing code inside a code editor.
 Rewrite ONLY the selected code so that it follows the user's instruction. If the selection is empty, write the
 new code to insert at the cursor. Reply with the code only: no explanations, no Markdown fences. Keep the
@@ -153,6 +154,7 @@ class Bridge:
             "untrusted": {"hooks": [f"{h.event}: {h.command}" for h in hooks_mod.untrusted(self.root)],
                           "mcp": [f"{s.name}: {s.describe()}" for s in mcp_mod.untrusted(self.root)]},
             "commands": self._commands(), "agents": {a.key: a.name for a in self.orch.registry},
+            "home": str(update_mod.HOME), "installed": update_mod.current(),
         }
 
     def m_set(self, p: dict[str, Any]) -> dict[str, Any]:
@@ -227,6 +229,39 @@ class Bridge:
         return {"session": stats.summarize(self.turn_log).to_dict(), "total": total.to_dict(),
                 "history": history.to_dict()}
 
+    def m_context(self, p: dict[str, Any]) -> dict[str, Any]:
+        """/context: quanto contesto del modello usa la prossima richiesta."""
+        return self._usage().to_dict()
+
+    def m_compact(self, p: dict[str, Any]) -> dict[str, Any]:
+        """/compact: riassume la conversazione in un messaggio."""
+        if self.busy is not None:
+            raise RuntimeError("Sto già lavorando: aspetta la fine o premi Stop")
+        history = self.session.history
+        if len(history) < 4:
+            return {"compacted": False, "usage": self._usage().to_dict()}
+        before = self._usage().used
+        self.session.history = extras.compact_history(self.orch.llm, history)
+        self.session.save()
+        usage = self._usage()
+        return {"compacted": True, "turns": len(history) // 2, "freed": max(0, before - usage.used),
+                "summary": extras.summary_of(self.session.history), "usage": usage.to_dict()}
+
+    def m_updates(self, p: dict[str, Any]) -> dict[str, Any]:
+        """Quante novità di MyDevAgent ci sono su GitHub (fa un git fetch)."""
+        return {"available": update_mod.available(), "installed": update_mod.current(), "home": str(update_mod.HOME)}
+
+    def m_update(self, p: dict[str, Any]) -> dict[str, Any]:
+        """Come /update nel terminale: git pull (e pip se servono nuove dipendenze). Poi l'editor mi riavvia."""
+        if self.busy is not None:
+            raise RuntimeError("Sto già lavorando: aspetta la fine o premi Stop")
+        result = update_mod.update()
+        return {"ok": result.ok, "message": result.message, "changes": result.changes, "restart": result.restart,
+                "installed": update_mod.current()}
+
+    def _usage(self) -> extras.ContextUsage:
+        return extras.context_usage(self.orch.settings, self.orch.registry.persona, self.root, self.session.history)
+
     def m_trust(self, p: dict[str, Any]) -> dict[str, Any]:
         """L'utente si fida del progetto: attiva i suoi hook e server MCP."""
         hooks_mod.allow(self.root)
@@ -290,7 +325,7 @@ class Bridge:
             self.notify("event", {"turn": turn, "event": event})
 
         try:
-            if len(self.session.history) >= AUTO_COMPACT_MESSAGES:
+            if extras.needs_compact(self._usage(), self.session.history, AUTO_COMPACT_MESSAGES):
                 on_event({"type": "info", "text": "riassumo la conversazione per fare spazio"})
                 self.session.history = extras.compact_history(self.orch.llm, self.session.history)
             mode = None if self.team == "auto" else self.team
