@@ -1,6 +1,5 @@
-"""Le funzioni Plus: revisione prima del commit, debug guidato, test scritti da Vio, lavori in sottofondo e
-memoria automatica del progetto. Servono un codice Plus (vedi license.plus_needed); nel terminale e nello
-Studio funzionano allo stesso modo.
+"""Revisione prima del commit, debug guidato, test scritti da Vio, lavori in sottofondo e memoria automatica
+del progetto. Nel terminale e nello Studio funzionano allo stesso modo.
 """
 
 from __future__ import annotations
@@ -19,10 +18,10 @@ from .agent.permissions import ApprovalRequest
 from .agent.runner import AgentRunner
 
 COMMANDS = {
-    "/revisione": "Plus · Vio controlla le modifiche prima del commit: errori, parti poco chiare, password nel codice",
-    "/debug": "Plus · /debug <comando>: Vio lo esegue, trova la causa dell'errore e lo corregge",
-    "/test": "Plus · /test <file>: Vio scrive i test per quel file e li fa passare",
-    "/sfondo": "Plus · /sfondo <compito>: Vio lavora in sottofondo mentre tu continui · /sfondo da solo: i lavori",
+    "/revisione": "Vio controlla le modifiche prima del commit: errori, parti poco chiare, password nel codice",
+    "/debug": "/debug <comando>: Vio lo esegue, trova la causa dell'errore e lo corregge",
+    "/test": "/test <file>: Vio scrive i test per quel file e li fa passare",
+    "/sfondo": "/sfondo <compito>: Vio lavora in sottofondo mentre tu continui · /sfondo da solo: i lavori",
 }
 REVIEW_TASK = (
     "Review the uncommitted changes of this project before the user commits them. Use git_diff (and read_file for "
