@@ -15,6 +15,7 @@ cambia solo chi disegna. stdout è riservato al protocollo; tutto il resto (prin
 
 from __future__ import annotations
 
+import contextlib
 import itertools
 import json
 import queue
@@ -25,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import IO, Any
 
-from . import __version__, fim, stats
+from . import __version__, fim, plus, stats
 from . import hooks as hooks_mod
 from . import license as license_mod
 from . import mcp as mcp_mod
@@ -56,7 +57,8 @@ language, style, naming and indentation of the file. Keep comments in the langua
 
 
 class Bridge:
-    def __init__(self, orchestrator: Orchestrator, root: Path, out: IO[bytes], *, permission: str = "ask") -> None:
+    def __init__(self, orchestrator: Orchestrator, root: Path, out: IO[bytes], *, permission: str = "ask",
+                 auto_memory: bool = False) -> None:
         self.orch = orchestrator
         self.root = Path(root).resolve()
         self.out = out
@@ -78,6 +80,8 @@ class Bridge:
         self.write_lock = threading.Lock()
         self.pool = ThreadPoolExecutor(max_workers=4)
         self.running = True
+        self.auto_memory = auto_memory  # memoria automatica (Plus); spenta nei test
+        self.jobs = plus.Background(self.orch, self.root, self._background_done)
 
     # ----------------------------------------------------------- protocollo
     def send(self, message: dict[str, Any]) -> None:
@@ -178,9 +182,16 @@ class Bridge:
         text = str(p.get("text", "")).strip()
         if not text:
             raise ValueError("messaggio vuoto")
+        name, _, arg = text.partition(" ")
+        if name.lower() in ("/licenza", "/license"):
+            state = self.m_license({"remove": True} if arg.strip().lower() == "rimuovi" else
+                                   {"key": arg.strip()} if arg.strip() else {})
+            return self._instant(state["message"] + ("" if state["ok"] else f"\n\n{state['buy']}"))
         state = license_mod.status()
         if not state.ok:
             raise RuntimeError(state.message)
+        if name.lower() == "/sfondo":
+            return self._instant(self._background(arg.strip()))
         if self.busy is not None:
             raise RuntimeError("Sto già lavorando: aspetta la fine o premi Stop")
         display = text
@@ -201,6 +212,32 @@ class Bridge:
         state = license_mod.activate(str(p["key"])) if p.get("key") else license_mod.status()
         return {"ok": state.ok, "kind": state.kind, "message": removed or state.message,
                 "days_left": state.days_left, "plus": state.plus, "buy": license_mod.BUY_URL}
+
+    def _instant(self, answer: str) -> dict[str, Any]:
+        """Un comando che risponde subito, senza modello: l'editor lo vede come un turno normale."""
+        turn = next(self.ids)
+        self.notify("chunk", {"turn": turn, "text": answer})
+        self.notify("turn_end", {"turn": turn, "answer": answer, "cancelled": False, "error": None, "files": []})
+        return {"turn": turn}
+
+    def _background(self, task: str) -> str:
+        why = license_mod.plus_needed()
+        if why:
+            return why
+        if task:
+            job = self.jobs.start(task)
+            return f"Lavoro n. {job.id} avviato in sottofondo: continua pure, ti avviso quando ho finito."
+        if not self.jobs.jobs:
+            return "Nessun lavoro in sottofondo. Scrivi /sfondo <compito> per avviarne uno."
+        return "\n\n".join(f"**n. {j.id} · {j.status}** · {j.task}" + (f"\n\n{j.answer}" if j.answer else "")
+                             for j in self.jobs.jobs)
+
+    def _background_done(self, job: plus.Job) -> None:
+        text = (f"Ho finito il lavoro in sottofondo n. {job.id}: scrivi /sfondo per vedere com'è andata."
+                if job.status == "finito" else f"Il lavoro in sottofondo n. {job.id} si è fermato: {job.answer[:120]}")
+        self.notify("event", {"turn": self.busy or 0, "event": {"type": "info", "text": text}})
+        self.notify("background", {"id": job.id, "status": job.status, "task": job.task, "answer": job.answer,
+                                   "text": text})
 
     def m_cancel(self, p: dict[str, Any]) -> dict[str, Any]:
         self.cancel.set()
@@ -364,8 +401,15 @@ class Bridge:
         if answer or not error:
             self.session.add_turn(display, answer + ("\n\n[interrotto]" if cancelled else ""))
         self.busy = None
+        if self.auto_memory and answer and not error and license_mod.status().plus:
+            self.pool.submit(self._remember, display, answer)
         self.notify("turn_end", {"turn": turn, "answer": answer, "cancelled": cancelled, "error": error,
                                  "files": record.files})
+
+    def _remember(self, request: str, answer: str) -> None:
+        with contextlib.suppress(Exception):  # la memoria automatica non deve mai disturbare
+            for fact in plus.remember(self.orch.llm, self.root, request, answer):
+                self.notify("event", {"turn": 0, "event": {"type": "info", "text": f"ricordato in MYDEVAGENT.md: {fact}"}})
 
     def _approver(self, turn: int):
         def approve(req: ApprovalRequest) -> tuple[str, str]:
@@ -398,6 +442,8 @@ class Bridge:
         """I comandi / che l'editor completa: quelli personalizzati e le skill."""
         out = [{"name": name, "description": desc} for name, (desc, _) in extras.custom_commands(self.root).items()]
         out += [{"name": f"/skill {s.name}", "description": s.description} for s in load_skills(self.root).values()]
+        out += [{"name": name, "description": desc} for name, desc in plus.COMMANDS.items()]
+        out.append({"name": "/licenza", "description": "la tua licenza · /licenza <codice> la attiva"})
         return out
 
     def _expand(self, text: str) -> str:
@@ -406,6 +452,11 @@ class Bridge:
         name, arg = name.lower(), arg.strip()
         if name == "/init":
             return extras.INIT_TASK
+        if name in plus.COMMANDS:
+            why = license_mod.plus_needed()
+            if why:
+                raise ValueError(why)
+            return plus.expand(name, arg)
         if name in ("/skill", "/skills"):
             skill_name, _, request = arg.partition(" ")
             skill = load_skills(self.root).get(skill_name.lower())
@@ -449,6 +500,6 @@ def main(profile: str | None = None, root: Path | None = None, permission: str =
     out = sys.stdout.buffer
     sys.stdout = sys.stderr  # print e rich finiscono su stderr: stdout è solo del protocollo
     orch = Orchestrator(load_settings(overrides={"profile": profile} if profile else None))
-    bridge = Bridge(orch, root or Path.cwd(), out, permission=permission)
+    bridge = Bridge(orch, root or Path.cwd(), out, permission=permission, auto_memory=True)
     bridge.notify("ready", {"protocol": PROTOCOL, "version": __version__})
     bridge.serve(sys.stdin.buffer)

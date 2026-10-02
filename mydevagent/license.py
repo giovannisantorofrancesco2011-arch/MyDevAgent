@@ -1,41 +1,42 @@
-"""Licenza di MyDevAgent: prova gratuita, poi abbonamento o acquisto una volta.
+"""Licenza di MyDevAgent: prova gratuita, poi abbonamento o acquisto una volta, normale o Plus.
 
-Le chiavi le vende e le emette Lemon Squeezy (https://www.lemonsqueezy.com): l'app le attiva e le ricontrolla
-con la sua License API pubblica, che non chiede nessuna chiave segreta. Lo stato sta in
-`~/.mydevagent/license.json`. Senza internet l'app continua a funzionare per GRACE_DAYS giorni dall'ultimo
-controllo riuscito: MyDevAgent lavora in locale e non deve fermarsi per un Wi-Fi che cade.
+I codici li crea solo gio con `scripts/genera_licenza.py` e la sua chiave privata, che non sta nel
+repository. Ogni codice contiene nome, piano (base o plus) e scadenza, firmati con Ed25519: l'app li
+controlla con la chiave pubblica qui sotto, senza internet, e nessuno può inventarne uno valido.
+Il Plus sblocca anche le funzioni di Studio Plus (vedi `plus_needed`) e il download di MyCode.
 
-Finché STORE_ID è vuoto (il negozio non è ancora aperto) il controllo è spento e tutto resta gratis.
+Finché PUBLIC_KEY è vuota (le vendite non sono ancora partite) il controllo è spento e tutto, Plus
+compreso, resta gratis.
 """
 
 from __future__ import annotations
 
+import base64
+import datetime as dt
 import json
 import os
-import platform
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import httpx
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-STORE_ID = os.environ.get("MYDEVAGENT_STORE_ID", "")  # l'id del negozio Lemon Squeezy, quando esiste
+PUBLIC_KEY = ""  # esadecimale, la stampa `python scripts/genera_licenza.py chiavi`
 BUY_URL = "https://mydevagent.github.io/prezzi.html"
-API = "https://api.lemonsqueezy.com/v1/licenses"
 TRIAL_DAYS = 14
-RECHECK_DAYS = 3  # ogni quanto ricontrollare la chiave online
-GRACE_DAYS = 30  # quanto si può restare offline con una chiave già attivata
+PREFIX = "MDA-"
 DAY = 86400
 
 
 @dataclass
 class Status:
     ok: bool  # si può usare MyDevAgent
-    kind: str  # "gratis", "prova", "abbonamento", "per sempre", "scaduta"
+    kind: str  # "gratis", "prova", "abbonamento", "per sempre" (+ " Plus"), "scaduta"
     message: str
     days_left: int | None = None
-    plus: bool = False  # abbonamento Plus: lo stesso codice vale anche per Studio Plus e MyCode
+    plus: bool = False  # Plus: lo stesso codice vale anche per Studio Plus e MyCode
 
 
 def _path() -> Path:
@@ -55,101 +56,81 @@ def _save(data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
-def _post(action: str, **fields: str) -> dict[str, Any]:
-    """Chiama la License API. Solleva OSError se non c'è rete o il server non risponde."""
+def sign(private: Ed25519PrivateKey, name: str, plan: str, expires: str = "") -> str:
+    """Crea un codice. `expires` è una data AAAA-MM-GG (abbonamento) o vuota (per sempre)."""
+    payload = json.dumps({"n": name, "p": plan, "s": expires}, separators=(",", ":")).encode()
+    return PREFIX + base64.urlsafe_b64encode(payload + private.sign(payload)).decode().rstrip("=")
+
+
+def read(key: str) -> dict[str, str] | None:
+    """Il contenuto di un codice, o None se il codice non è stato firmato da gio."""
     try:
-        response = httpx.post(f"{API}/{action}", data=fields, headers={"Accept": "application/json"}, timeout=15)
-        return response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        raise OSError(str(exc)) from exc
+        raw = base64.urlsafe_b64decode(key.strip().removeprefix(PREFIX) + "==")
+        payload, signature = raw[:-64], raw[-64:]
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(PUBLIC_KEY)).verify(signature, payload)
+        return json.loads(payload)
+    except (ValueError, InvalidSignature):
+        return None
 
 
-def _plus(reply: dict[str, Any]) -> bool:
-    """Il prodotto o la variante su Lemon Squeezy si chiama «... Plus»."""
-    meta = reply.get("meta") or {}
-    return "plus" in f"{meta.get('product_name', '')} {meta.get('variant_name', '')}".lower()
-
-
-def _kind(reply: dict[str, Any]) -> str:
-    return "abbonamento" if (reply.get("license_key") or {}).get("expires_at") else "per sempre"
-
-
-def _problem(reply: dict[str, Any]) -> str:
-    """Perché la chiave non va bene ("" se va bene)."""
-    key = reply.get("license_key") or {}
-    if key.get("status") == "expired":
-        return "l'abbonamento è scaduto: rinnovalo per continuare"
-    if key.get("status") == "disabled":
-        return "questa chiave è stata disattivata"
-    if reply.get("error") or not reply.get("valid", reply.get("activated")):
-        return str(reply.get("error") or "chiave non valida")
-    if str((reply.get("meta") or {}).get("store_id", "")) != str(STORE_ID):
-        return "questa chiave non è di MyDevAgent"
-    return ""
+def _check(key: str, now: float) -> Status:
+    info = read(key)
+    if info is None:
+        return Status(False, "scaduta", "Questo codice non è valido: controlla di averlo copiato tutto.")
+    plus = info.get("p") == "plus"
+    name = info.get("n") or "te"
+    if not info.get("s"):
+        kind = "per sempre" + (" Plus" if plus else "")
+        return Status(True, kind, f"Licenza {kind} di {name}. Grazie per il supporto!", plus=plus)
+    # ponytail: la data viene dall'orologio del computer, che si può spostare indietro; basta per un deterrente
+    left = (dt.date.fromisoformat(info["s"]) - dt.date.fromtimestamp(now)).days + 1
+    if left <= 0:
+        return Status(False, "scaduta", f"L'abbonamento è scaduto il {info['s']}: rinnovalo su {BUY_URL} "
+                                        "e scrivi /licenza <nuovo codice>.", 0)
+    kind = "abbonamento" + (" Plus" if plus else "")
+    return Status(True, kind, f"{kind.capitalize()} di {name}, valido fino al {info['s']}.", left, plus)
 
 
 def activate(key: str) -> Status:
-    """Attiva una chiave su questo computer (usa un'attivazione della chiave)."""
-    key = key.strip()
-    try:
-        reply = _post("activate", license_key=key, instance_name=platform.node() or "computer")
-    except OSError:
-        return Status(False, "scaduta", "Non riesco a collegarmi al server delle licenze: controlla internet e riprova.")
-    problem = _problem(reply)
-    if problem:
-        return Status(False, "scaduta", f"Chiave non attivata: {problem}.")
-    data = _load()
-    data.update(key=key, instance=(reply.get("instance") or {}).get("id", ""), kind=_kind(reply), plus=_plus(reply),
-                checked=time.time())
-    _save(data)
-    return status()
+    state = _check(key, time.time())
+    if state.ok:
+        data = _load()
+        data["key"] = key.strip()
+        _save(data)
+    else:
+        state.message = f"Codice non attivato. {state.message}"
+    return state
 
 
 def deactivate() -> str:
-    """Libera l'attivazione di questo computer, così la chiave si può usare su un altro."""
     data = _load()
-    if not data.get("key"):
-        return "Su questo computer non c'è nessuna chiave."
-    try:
-        _post("deactivate", license_key=data["key"], instance_id=data.get("instance", ""))
-    except OSError:
-        return "Non riesco a collegarmi al server delle licenze: riprova quando sei online."
-    for field in ("key", "instance", "kind", "plus", "checked"):
-        data.pop(field, None)
+    if not data.pop("key", None):
+        return "Su questo computer non c'è nessun codice."
     _save(data)
-    return "Chiave tolta da questo computer: ora puoi attivarla su un altro."
+    return "Codice tolto da questo computer."
 
 
 def status(now: float | None = None) -> Status:
-    """Si può usare MyDevAgent? Ricontrolla la chiave online solo ogni RECHECK_DAYS giorni."""
-    if not STORE_ID:
-        return Status(True, "gratis", "MyDevAgent è gratis.")
+    """Si può usare MyDevAgent?"""
+    if not PUBLIC_KEY:
+        return Status(True, "gratis", "MyDevAgent è gratis.", plus=True)
     now = time.time() if now is None else now
     data = _load()
+    if data.get("key"):
+        return _check(data["key"], now)
     if "first_run" not in data:
         data["first_run"] = now
         _save(data)
-    if data.get("key"):
-        if now - data.get("checked", 0) >= RECHECK_DAYS * DAY:
-            try:
-                reply = _post("validate", license_key=data["key"], instance_id=data.get("instance", ""))
-            except OSError:
-                reply = None  # offline: vale l'ultimo controllo riuscito
-            if reply is not None:
-                problem = _problem(reply)
-                if problem:
-                    return Status(False, "scaduta", f"La tua licenza non è più valida: {problem}.")
-                data.update(kind=_kind(reply), plus=_plus(reply), checked=now)
-                _save(data)
-        offline = int((now - data.get("checked", 0)) // DAY)
-        if offline > GRACE_DAYS:
-            return Status(False, "scaduta", f"Sono {offline} giorni che non riesco a controllare la licenza: "
-                                            "collegati a internet una volta e riprova.")
-        kind = data.get("kind", "per sempre") + (" Plus" if data.get("plus") else "")
-        return Status(True, kind, f"Licenza attiva ({kind}). Grazie per il supporto!", plus=bool(data.get("plus")))
     left = TRIAL_DAYS - int((now - data["first_run"]) // DAY)
     if left > 0:
         return Status(True, "prova", f"Prova gratuita: {'ultimo giorno' if left == 1 else f'ancora {left} giorni'}.",
-                      left)
+                      left, plus=True)  # durante la prova si prova anche il Plus
     return Status(False, "scaduta", f"La prova gratuita è finita. Scegli abbonamento o acquisto una volta su "
-                                    f"{BUY_URL}, poi scrivi /licenza <chiave>.", 0)
+                                    f"{BUY_URL}, poi scrivi /licenza <codice>.", 0)
+
+
+def plus_needed() -> str:
+    """"" se le funzioni Plus si possono usare, altrimenti il perché."""
+    if status().plus:
+        return ""
+    return f"Questa è una funzione Plus. Passa al Plus su {BUY_URL} e scrivi /licenza <codice>."
