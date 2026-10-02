@@ -12,3 +12,6 @@ dist/
 finetune/data/
 finetune/outputs/
 *.gguf
+
+# chiavi private (licenze)
+*.pem
