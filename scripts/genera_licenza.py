@@ -1,5 +1,7 @@
 """Crea i codici di licenza di MyDevAgent. Lo usa solo gio, sul suo computer.
 
+Serve solo il pacchetto `cryptography` (una volta: py -m pip install cryptography).
+
 La prima volta, una volta sola:
     python scripts/genera_licenza.py chiavi
 crea la chiave privata in ~/.mydevagent-licenze/privata.pem (NON va mai condivisa né messa su GitHub)
@@ -14,18 +16,26 @@ Poi, per ogni cliente che ha pagato:
 from __future__ import annotations
 
 import argparse
+import base64
 import datetime as dt
+import json
 import sys
 from pathlib import Path
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from mydevagent.license import sign  # noqa: E402
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+except ImportError:
+    sys.exit("Manca il pacchetto cryptography. Installalo una volta con:  py -m pip install cryptography")
 
 PRIVATE = Path.home() / ".mydevagent-licenze" / "privata.pem"
 DAYS = {"mese": 31, "anno": 366, "sempre": 0}  # un giorno in più per i pagamenti arrivati in ritardo
+
+
+def sign(private: Ed25519PrivateKey, name: str, plan: str, expires: str) -> str:
+    """Lo stesso formato che legge mydevagent/license.py (lo script non importa MyDevAgent: basta `cryptography`)."""
+    payload = json.dumps({"n": name, "p": plan, "s": expires}, separators=(",", ":")).encode()
+    return "MDA-" + base64.urlsafe_b64encode(payload + private.sign(payload)).decode().rstrip("=")
 
 
 def public_hex(private: Ed25519PrivateKey) -> str:

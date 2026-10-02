@@ -69,7 +69,7 @@ def test_deactivate(private):
 
 
 def test_generator_script(tmp_path):
-    script = [sys.executable, "scripts/genera_licenza.py"]
+    script = [sys.executable, "-I", "scripts/genera_licenza.py"]  # -I: senza MyDevAgent sul percorso
     env = {"HOME": str(tmp_path), "USERPROFILE": str(tmp_path), "PATH": ""}
     out = subprocess.run(script + ["chiavi"], capture_output=True, text=True, env=env, check=True).stdout
     public = out.strip().splitlines()[-1]
