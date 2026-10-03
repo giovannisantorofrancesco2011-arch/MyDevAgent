@@ -3,6 +3,7 @@ import sys
 from email.message import EmailMessage
 from pathlib import Path
 
+import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -86,3 +87,18 @@ def test_not_configured_does_nothing(monkeypatch, capsys):
         monkeypatch.delenv(var, raising=False)
     bot.main()
     assert "non ancora configurato" in capsys.readouterr().out
+
+
+def test_private_key_survives_bad_pasting():
+    private = Ed25519PrivateKey.generate()
+    pem = private.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                serialization.NoEncryption()).decode()
+    raw = lambda k: k.private_bytes(serialization.Encoding.Raw, serialization.PrivateFormat.Raw,  # noqa: E731
+                                    serialization.NoEncryption())
+    for pasted in (pem, pem.replace("\n", " "), pem.replace("\n", "\\n"), pem.replace("\n", "\r\n") + "  ",
+                   pem.splitlines()[1]):
+        assert raw(bot.load_key(pasted)) == raw(private)
+    with pytest.raises(SystemExit, match="PUBBLICA"):
+        bot.load_key("c9affe19737bcc37f1d46464a9213c3607ffd574f5f873939a33d1e32ca199e4")
+    with pytest.raises(SystemExit, match="non è valida"):
+        bot.load_key("ciao")

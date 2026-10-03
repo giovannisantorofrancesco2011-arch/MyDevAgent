@@ -30,8 +30,9 @@ from email.message import EmailMessage
 from email.utils import parseaddr
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from genera_licenza import expires_for, serialization, sign  # noqa: E402
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+from genera_licenza import expires_for, public_hex, serialization, sign  # noqa: E402
 
 PREZZI = {"4.99": "base mese", "39.00": "base sempre", "9.99": "plus mese", "79.00": "plus sempre"}
 DONE, CHECK = "mydevagent-inviato", "mydevagent-controllare"
@@ -136,13 +137,31 @@ def run(imap, smtp, private, me: str, prices: dict[str, str]) -> dict[str, int]:
     return counts
 
 
+def load_key(secret: str):
+    """La chiave privata dal Secret, anche se incollata male: righe unite, spazi in più, \\n scritti a mano o
+    senza le righe BEGIN/END. Basta che ci sia il blocco di lettere del file privata.pem."""
+    body = re.sub(r"-----[A-Z ]+-----|\\n|\\r|\s", "", secret)
+    if re.fullmatch(r"[0-9a-fA-F]{64}", body):
+        sys.exit("LICENZA_PRIVATA contiene la chiave PUBBLICA: serve il contenuto del file privata.pem.")
+    pem = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i + 64] for i in range(0, len(body), 64))
+    try:
+        return serialization.load_pem_private_key(f"{pem}\n-----END PRIVATE KEY-----\n".encode(), password=None)
+    except ValueError:
+        sys.exit("LICENZA_PRIVATA non è valida: apri privata.pem con il Blocco note, copia tutto e incollalo di nuovo "
+                 f"nel Secret (ora contiene {len(body)} caratteri utili, ne servono 64).")
+
+
 def main() -> None:
     me, password, pem = (os.environ.get(k, "") for k in ("GMAIL_INDIRIZZO", "GMAIL_PASSWORD_APP", "LICENZA_PRIVATA"))
     if not (me and password and pem):
         print("Bot non ancora configurato (mancano i Secrets): non faccio niente.")
         return
     prices = {f"{float(k):.2f}": v for k, v in json.loads(os.environ.get("PREZZI") or json.dumps(PREZZI)).items()}
-    private = serialization.load_pem_private_key(pem.encode(), password=None)
+    private = load_key(pem)
+    app_key = re.search(r'^PUBLIC_KEY = "(\w*)"', (ROOT / "mydevagent" / "license.py").read_text(), re.MULTILINE)[1]
+    if public_hex(private) != app_key:
+        sys.exit("LICENZA_PRIVATA non è la chiave che usa l'app: i codici non funzionerebbero. Usa il privata.pem "
+                 "creato insieme alla chiave pubblica che hai mandato.")
     imap = imaplib.IMAP4_SSL("imap.gmail.com")
     imap.login(me, password)
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
