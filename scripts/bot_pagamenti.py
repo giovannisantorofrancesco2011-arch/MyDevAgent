@@ -96,7 +96,10 @@ def letter(payment: Payment, plan: str, code: str, sender: str) -> EmailMessage:
         "Per attivarlo apri MyDevAgent (o la chat di MyDevAgent Studio) e scrivi:\n"
         "/licenza seguito dal codice\n\n"
         + ("Quando scade, rinnova il pagamento e ti arriva un codice nuovo.\n\n" if durata != "sempre" else "")
-        + "Se qualcosa non funziona, rispondi a questa email.\n\nVio e il team di MyDevAgent\n")
+        + "Se qualcosa non funziona, rispondi a questa email.\n\nVio e il team di MyDevAgent\n\n"
+        "---\n\nEnglish: thanks for buying MyDevAgent! To activate the code above, open MyDevAgent (or the "
+        "MyDevAgent Studio chat) and type /license followed by the code. If something doesn't work, reply to "
+        "this email.\n")
     return mail
 
 
