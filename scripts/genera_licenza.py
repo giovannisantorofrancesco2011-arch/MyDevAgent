@@ -38,6 +38,11 @@ def sign(private: Ed25519PrivateKey, name: str, plan: str, expires: str) -> str:
     return "MDA-" + base64.urlsafe_b64encode(payload + private.sign(payload)).decode().rstrip("=")
 
 
+def expires_for(durata: str, today: dt.date | None = None) -> str:
+    days = DAYS[durata]
+    return ((today or dt.date.today()) + dt.timedelta(days=days)).isoformat() if days else ""
+
+
 def public_hex(private: Ed25519PrivateKey) -> str:
     return private.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
 
@@ -62,8 +67,7 @@ def main() -> None:
     if not PRIVATE.exists():
         sys.exit("Prima crea le chiavi: python scripts/genera_licenza.py chiavi")
     private = serialization.load_pem_private_key(PRIVATE.read_bytes(), password=None)
-    expires = (dt.date.today() + dt.timedelta(days=DAYS[args.durata])).isoformat() if DAYS[args.durata] else ""
-    print(sign(private, args.nome, args.piano, expires))
+    print(sign(private, args.nome, args.piano, expires_for(args.durata)))
 
 
 if __name__ == "__main__":

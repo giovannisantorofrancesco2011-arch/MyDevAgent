@@ -1,0 +1,26 @@
+# Bot dei pagamenti: ogni 15 minuti legge le email di PayPal e manda i codici di licenza (scripts/bot_pagamenti.py).
+# Finché i Secrets GMAIL_INDIRIZZO, GMAIL_PASSWORD_APP e LICENZA_PRIVATA non ci sono, non fa niente.
+name: Pagamenti
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+concurrency: pagamenti  # mai due giri insieme: manderebbero due volte lo stesso codice
+permissions:
+  contents: read
+jobs:
+  codici:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "cryptography>=42"
+      - run: python scripts/bot_pagamenti.py
+        env:
+          GMAIL_INDIRIZZO: ${{ secrets.GMAIL_INDIRIZZO }}
+          GMAIL_PASSWORD_APP: ${{ secrets.GMAIL_PASSWORD_APP }}
+          LICENZA_PRIVATA: ${{ secrets.LICENZA_PRIVATA }}
+          PREZZI: ${{ vars.PREZZI }}
