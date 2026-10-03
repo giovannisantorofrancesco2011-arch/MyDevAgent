@@ -14,6 +14,8 @@ def offline(monkeypatch, tmp_path):
     for var in ("HOME", "USERPROFILE"):
         monkeypatch.setenv(var, str(tmp_path / "home"))
     monkeypatch.setenv("MYDEVAGENT_STATE_DIR", str(tmp_path / "state"))
+    # licenza spenta nei test (tutto gratis); i test della licenza mettono una chiave di prova
+    monkeypatch.setattr("mydevagent.license.PUBLIC_KEY", "")
     for var in ("MYDEVAGENT_SKILLS_DIRS", "MYDEVAGENT_PLUGINS_DIRS"):
         monkeypatch.delenv(var, raising=False)
 

@@ -23,7 +23,7 @@ from typing import Any
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-PUBLIC_KEY = ""  # esadecimale, la stampa `python scripts/genera_licenza.py chiavi`
+PUBLIC_KEY = "c9affe19737bcc37f1d46464a9213c3607ffd574f5f873939a33d1e32ca199e4"  # la chiave pubblica di gio
 BUY_URL = "https://mydevagent.github.io/prezzi.html"
 TRIAL_DAYS = 14
 PREFIX = "MDA-"
