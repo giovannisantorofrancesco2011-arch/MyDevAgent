@@ -162,8 +162,14 @@ def main() -> None:
     if public_hex(private) != app_key:
         sys.exit("LICENZA_PRIVATA non è la chiave che usa l'app: i codici non funzionerebbero. Usa il privata.pem "
                  "creato insieme alla chiave pubblica che hai mandato.")
+    me, password = me.strip(), re.sub(r"\s", "", password)  # Google mostra la password a gruppi di 4 con spazi
     imap = imaplib.IMAP4_SSL("imap.gmail.com")
-    imap.login(me, password)
+    try:
+        imap.login(me, password)
+    except imaplib.IMAP4.error:
+        sys.exit("Gmail non accetta indirizzo e password. Controlla che GMAIL_INDIRIZZO sia l'indirizzo completo "
+                 "(con @gmail.com) e che GMAIL_PASSWORD_APP sia la «password per le app» di 16 lettere, non la "
+                 "password normale di Google.")
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(me, password)
         counts = run(imap, smtp, private, me, prices)
